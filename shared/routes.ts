@@ -83,6 +83,33 @@ export const api = {
         404: errorSchemas.notFound,
       },
     },
+    advanceReveal: {
+      method: 'POST' as const,
+      path: '/api/rooms/:code/reveal' as const,
+      responses: {
+        200: z.custom<typeof rooms.$inferSelect>(),
+        404: errorSchemas.notFound,
+      },
+    },
+    addPlayer: {
+      method: 'POST' as const,
+      path: '/api/rooms/:code/players' as const,
+      input: z.object({
+        name: z.string().min(1),
+      }),
+      responses: {
+        200: z.custom<typeof players.$inferSelect>(),
+        404: errorSchemas.notFound,
+      },
+    },
+    removePlayer: {
+      method: 'DELETE' as const,
+      path: '/api/rooms/:code/players/:id' as const,
+      responses: {
+        204: z.void(),
+        404: errorSchemas.notFound,
+      },
+    },
     clue: {
       method: 'POST' as const,
       path: '/api/rooms/:code/clue' as const,

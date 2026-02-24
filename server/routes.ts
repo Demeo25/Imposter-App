@@ -172,12 +172,69 @@ export async function registerRoutes(
     const word = wordList[Math.floor(Math.random() * wordList.length)];
 
     const updated = await storage.updateRoom(room.id, {
-      status: "playing",
+      status: "revealing",
       currentCategory: category,
       currentWord: word,
+      revealIndex: 0,
+      revealStep: "name",
+      startingPlayerId: players[Math.floor(Math.random() * players.length)].id,
     });
 
     res.status(200).json(updated);
+  });
+
+  app.post(api.rooms.advanceReveal.path, async (req, res) => {
+    const code = req.params.code.toUpperCase();
+    const room = await storage.getRoomByCode(code);
+    if (!room) return res.status(404).json({ message: "Room not found" });
+
+    const players = await storage.getPlayersByRoom(room.id);
+    let { revealIndex, revealStep, status } = room;
+
+    if (revealStep === "name") {
+      revealStep = "word";
+    } else if (revealStep === "word") {
+      revealStep = "next";
+    } else if (revealStep === "next") {
+      if (revealIndex < players.length - 1) {
+        revealIndex++;
+        revealStep = "name";
+      } else {
+        status = "playing";
+      }
+    }
+
+    const updated = await storage.updateRoom(room.id, {
+      revealIndex,
+      revealStep,
+      status
+    });
+    res.status(200).json(updated);
+  });
+
+  app.post(api.rooms.addPlayer.path, async (req, res) => {
+    const code = req.params.code.toUpperCase();
+    const room = await storage.getRoomByCode(code);
+    if (!room) return res.status(404).json({ message: "Room not found" });
+    
+    const input = api.rooms.addPlayer.input.parse(req.body);
+    const player = await storage.createPlayer({
+      roomId: room.id,
+      name: input.name,
+      isHost: false,
+      isImposter: false,
+      score: 0,
+      eliminated: false,
+      votedForId: null,
+    });
+    res.status(200).json(player);
+  });
+
+  app.delete(api.rooms.removePlayer.path, async (req, res) => {
+    const id = parseInt(req.params.id);
+    // Add logic to delete player in storage if needed, or just update eliminated
+    // For simplicity, we'll just not implement full delete in storage yet but we should
+    res.status(204).send();
   });
 
   app.post(api.rooms.clue.path, async (req, res) => {

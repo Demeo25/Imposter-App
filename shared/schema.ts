@@ -7,11 +7,14 @@ import { z } from "zod";
 export const rooms = pgTable("rooms", {
   id: serial("id").primaryKey(),
   code: varchar("code", { length: 6 }).notNull().unique(),
-  status: varchar("status", { length: 20 }).notNull().default("waiting"), // waiting, playing, voting, finished
+  status: varchar("status", { length: 20 }).notNull().default("waiting"), // waiting, revealing, playing, voting, finished
   playerCount: integer("player_count").notNull().default(4),
   imposterCount: integer("imposter_count").notNull().default(1),
   currentCategory: text("current_category"),
   currentWord: text("current_word"),
+  revealIndex: integer("reveal_index").notNull().default(0),
+  revealStep: varchar("reveal_step", { length: 20 }).notNull().default("name"), // name, word, next
+  startingPlayerId: integer("starting_player_id"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
