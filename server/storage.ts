@@ -15,6 +15,7 @@ export interface IStorage {
   getPlayer(id: number): Promise<Player | undefined>;
   getPlayersByRoom(roomId: number): Promise<Player[]>;
   updatePlayer(id: number, updates: Partial<InsertPlayer>): Promise<Player>;
+  deletePlayer(id: number): Promise<void>;
 
   createClue(insertClue: InsertClue): Promise<Clue>;
   getCluesByRoom(roomId: number): Promise<Clue[]>;
@@ -60,6 +61,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(players.id, id))
       .returning();
     return player;
+  }
+
+  async deletePlayer(id: number): Promise<void> {
+    await db.delete(players).where(eq(players.id, id));
   }
 
   async createClue(insertClue: InsertClue): Promise<Clue> {

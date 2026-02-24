@@ -232,8 +232,7 @@ export async function registerRoutes(
 
   app.delete(api.rooms.removePlayer.path, async (req, res) => {
     const id = parseInt(req.params.id);
-    // Add logic to delete player in storage if needed, or just update eliminated
-    // For simplicity, we'll just not implement full delete in storage yet but we should
+    await storage.deletePlayer(id);
     res.status(204).send();
   });
 

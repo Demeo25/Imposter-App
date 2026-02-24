@@ -37,17 +37,33 @@ export default function Room() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
       });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Failed to add player');
+      }
       return res.json();
     },
     onSuccess: () => {
       setNewName("");
       queryClient.invalidateQueries({ queryKey: ['room', code] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   });
 
   const advanceReveal = useMutation({
     mutationFn: async () => {
       await fetch(buildUrl(api.rooms.advanceReveal.path, { code: code! }), { method: 'POST' });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['room', code] })
+  });
+
+  const removePlayer = useMutation({
+    mutationFn: async (playerId: number) => {
+      await fetch(buildUrl(api.rooms.removePlayer.path, { code: code!, id: playerId }), {
+        method: api.rooms.removePlayer.method,
+      });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['room', code] })
   });
@@ -81,6 +97,14 @@ export default function Room() {
                 {players.map(p => (
                   <div key={p.id} className="flex items-center justify-between bg-card p-3 rounded-xl border-2 border-border/50">
                     <span className="font-bold">{p.name}</span>
+                    <PlayfulButton 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => removePlayer.mutate(p.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </PlayfulButton>
                   </div>
                 ))}
               </div>
