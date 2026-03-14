@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useRoute } from "wouter";
-import { useRoom, useStartGame, useNextRound, useRevealPlayer, useEndGame, useCategories } from "@/hooks/use-game";
+import { useRoom, useStartGame, useNextRound, useRevealPlayer, useEndGame, useCategories, useCreateCategory, useSuggestWords } from "@/hooks/use-game";
 import { useSettings } from "@/hooks/use-settings";
 import { CategoryEditor } from "@/components/CategoryEditor";
 import { PlayfulButton } from "@/components/ui/playful-button";
-import { Loader2, UserPlus, Trash2, ChevronDown, ChevronUp, Eye, Ghost, Star, Minus, Plus, Check, Settings2, Pencil } from "lucide-react";
+import { Loader2, UserPlus, Trash2, ChevronDown, ChevronUp, Eye, Ghost, Star, Minus, Plus, Check, Settings2, Pencil, Sparkles, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -224,6 +224,7 @@ export default function Room() {
   const [imposterCount, setImposterCount] = useState(1);
   const [showCategories, setShowCategories] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [creatingCategory, setCreatingCategory] = useState(false);
 
   const getSelectedIds = () => {
     if (!categories) return [];
@@ -452,6 +453,14 @@ export default function Room() {
                             </div>
                           );
                         })}
+                        <button
+                          onClick={() => setCreatingCategory(true)}
+                          data-testid="button-lobby-new-category"
+                          className="flex items-center gap-2 w-full px-3 py-2.5 text-sm font-medium text-primary hover:bg-primary/5 rounded-lg transition-colors mt-1 border-2 border-dashed border-primary/30"
+                        >
+                          <Plus className="w-4 h-4" />
+                          New Category
+                        </button>
                         {getSelectedIds().length === 0 && (
                           <p className="text-xs text-destructive text-center py-1 font-medium">
                             Select at least one category
@@ -613,6 +622,193 @@ export default function Room() {
           />
         )}
       </AnimatePresence>
+
+      {/* New category sheet */}
+      <AnimatePresence>
+        {creatingCategory && (
+          <NewCategorySheet onClose={() => setCreatingCategory(false)} />
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+// ─── New Category bottom sheet ───────────────────────────────────────────────
+function NewCategorySheet({ onClose }: { onClose: () => void }) {
+  const { toast } = useToast();
+  const createCategory = useCreateCategory();
+  const suggestWords = useSuggestWords();
+
+  const [name, setName] = useState("");
+  const [words, setWords] = useState<string[]>([]);
+  const [wordInput, setWordInput] = useState("");
+
+  const addWord = () => {
+    const trimmed = wordInput.trim();
+    if (!trimmed) return;
+    if (words.map(w => w.toLowerCase()).includes(trimmed.toLowerCase())) {
+      toast({ title: "Word already added", variant: "destructive" });
+      return;
+    }
+    setWords(prev => [...prev, trimmed]);
+    setWordInput("");
+  };
+
+  const handleAiFill = async () => {
+    if (!name.trim()) {
+      toast({ title: "Enter a category name first", variant: "destructive" });
+      return;
+    }
+    try {
+      const result = await suggestWords.mutateAsync(name.trim());
+      const toAdd = result.words.filter(
+        w => !words.map(x => x.toLowerCase()).includes(w.toLowerCase())
+      );
+      setWords(prev => [...prev, ...toAdd].slice(0, 20));
+      toast({ title: `Added ${toAdd.length} AI-generated words!` });
+    } catch (err: any) {
+      toast({ title: "AI unavailable", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleSave = async () => {
+    if (!name.trim() || words.length < 2) return;
+    try {
+      await createCategory.mutateAsync({ name: name.trim(), words });
+      toast({ title: `"${name.trim()}" category created!` });
+      onClose();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col"
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ type: "spring", damping: 26, stiffness: 300 }}
+        className="absolute inset-x-0 bottom-0 top-16 bg-background rounded-t-3xl shadow-2xl flex flex-col overflow-hidden"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border/50 flex-shrink-0">
+          <h2 className="text-2xl font-display">New Category</h2>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full bg-muted flex items-center justify-center hover:bg-muted/70 transition-colors"
+            data-testid="button-close-new-category"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4">
+          {/* Name input */}
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
+              Category Name
+            </label>
+            <Input
+              placeholder="e.g. Movies, Video Games, Cities..."
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className="h-12"
+              data-testid="input-new-category-name"
+            />
+          </div>
+
+          {/* AI Fill */}
+          <PlayfulButton
+            variant="outline"
+            className="w-full"
+            onClick={handleAiFill}
+            disabled={suggestWords.isPending || !name.trim()}
+            data-testid="button-ai-fill-new-category"
+          >
+            {suggestWords.isPending ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</>
+            ) : (
+              <><Sparkles className="w-4 h-4 mr-2" /> AI Fill Words</>
+            )}
+          </PlayfulButton>
+
+          {/* Add word manually */}
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
+              Words ({words.length})
+            </label>
+            <div className="flex gap-2 mb-3">
+              <Input
+                placeholder="Type a word and press Enter..."
+                value={wordInput}
+                onChange={e => setWordInput(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") addWord(); }}
+                className="h-11"
+                data-testid="input-new-category-word"
+              />
+              <PlayfulButton onClick={addWord} disabled={!wordInput.trim()} data-testid="button-add-new-category-word">
+                <Plus className="w-5 h-5" />
+              </PlayfulButton>
+            </div>
+
+            {words.length > 0 && (
+              <div className="grid grid-cols-2 gap-2">
+                <AnimatePresence>
+                  {words.map(w => (
+                    <motion.div
+                      key={w}
+                      layout
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      className="flex items-center justify-between bg-card border-2 border-border rounded-xl px-3 py-2.5 group"
+                    >
+                      <span className="font-medium text-sm truncate">{w}</span>
+                      <button
+                        onClick={() => setWords(prev => prev.filter(x => x !== w))}
+                        className="text-destructive opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity ml-2 flex-shrink-0"
+                        data-testid={`button-remove-new-word-${w}`}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-4 pb-6 pt-3 border-t border-border/50 flex-shrink-0">
+          <PlayfulButton
+            size="lg"
+            className="w-full"
+            onClick={handleSave}
+            disabled={!name.trim() || words.length < 2 || createCategory.isPending}
+            data-testid="button-save-new-category"
+          >
+            {createCategory.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              `Save Category${words.length >= 2 ? ` (${words.length} words)` : ""}`
+            )}
+          </PlayfulButton>
+          {words.length < 2 && (
+            <p className="text-center text-xs text-muted-foreground mt-2">
+              Add at least 2 words to save
+            </p>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }

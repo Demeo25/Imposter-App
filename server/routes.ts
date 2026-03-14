@@ -82,11 +82,11 @@ export async function registerRoutes(
         messages: [
           {
             role: 'system',
-            content: 'You generate word lists for a social deduction party game. Return a JSON object with a "words" key containing an array of 8 common single-word items that fit the category. Words must be well-known, easy to guess and describe. Example: {"words":["Dog","Cat","Rabbit","Hamster","Fish","Bird","Turtle","Snake"]}',
+            content: 'You generate word lists for a social deduction party game. Return a JSON object with a "words" key containing an array of 10 common single-word items that fit the category. Words must be well-known, easy to guess and describe. Example: {"words":["Dog","Cat","Rabbit","Hamster","Fish","Bird","Turtle","Snake","Parrot","Gecko"]}',
           },
           {
             role: 'user',
-            content: `Generate 8 words for the category: ${name}`,
+            content: `Generate 10 words for the category: ${name}`,
           },
         ],
         response_format: { type: 'json_object' },
@@ -95,7 +95,7 @@ export async function registerRoutes(
       const parsed = JSON.parse(content);
       const words: string[] = parsed.words || parsed.items || Object.values(parsed)[0] as string[];
       if (!Array.isArray(words) || words.length === 0) throw new Error("No words returned");
-      res.json({ words: words.slice(0, 8) });
+      res.json({ words: words.slice(0, 10) });
     } catch (err: any) {
       console.error("AI suggest-words error:", err.message);
       res.status(503).json({ message: "AI suggestions unavailable right now" });
