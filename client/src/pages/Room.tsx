@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useRoute } from "wouter";
-import { useRoom, useStartGame, useNextRound, useRevealPlayer, useEndGame } from "@/hooks/use-game";
+import { useRoom, useStartGame, useNextRound, useRevealPlayer, useEndGame, useCategories } from "@/hooks/use-game";
 import { useSettings } from "@/hooks/use-settings";
 import { PlayfulButton } from "@/components/ui/playful-button";
-import { Loader2, UserPlus, Trash2, ChevronDown, Eye, Ghost, Star, Minus, Plus } from "lucide-react";
+import { Loader2, UserPlus, Trash2, ChevronDown, ChevronUp, Eye, Ghost, Star, Minus, Plus, Check, Settings2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -216,10 +216,26 @@ export default function Room() {
   const nextRound = useNextRound(code || "");
   const revealPlayer = useRevealPlayer(code || "");
   const endGame = useEndGame(code || "");
-  const { settings } = useSettings();
+  const { settings, update: updateSettings } = useSettings();
+  const { data: categories } = useCategories();
 
   const [newName, setNewName] = useState("");
   const [imposterCount, setImposterCount] = useState(1);
+  const [showCategories, setShowCategories] = useState(false);
+
+  const getSelectedIds = () => {
+    if (!categories) return [];
+    return settings.selectedCategoryIds ?? categories.map(c => c.id);
+  };
+
+  const toggleCategory = (id: number) => {
+    if (!categories) return;
+    const current = getSelectedIds();
+    const updated = current.includes(id)
+      ? current.filter(x => x !== id)
+      : [...current, id];
+    updateSettings({ selectedCategoryIds: updated });
+  };
 
   // Which player is currently showing their secret overlay in the reveal phase
   const [revealingPlayer, setRevealingPlayer] = useState<Player | null>(null);
@@ -370,6 +386,71 @@ export default function Room() {
                 </div>
               </div>
 
+              {/* Category selector */}
+              <div className="rounded-xl border-2 border-border/50 overflow-hidden">
+                <button
+                  onClick={() => setShowCategories(v => !v)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-card hover:bg-muted/30 transition-colors"
+                  data-testid="button-toggle-categories-panel"
+                >
+                  <div className="flex items-center gap-2">
+                    <Settings2 className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-bold text-sm">Categories</span>
+                    {categories && (
+                      <span className="text-xs text-muted-foreground">
+                        ({getSelectedIds().length}/{categories.length} active)
+                      </span>
+                    )}
+                  </div>
+                  {showCategories
+                    ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                    : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                </button>
+
+                <AnimatePresence>
+                  {showCategories && categories && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      style={{ overflow: "hidden" }}
+                    >
+                      <div className="px-3 pb-3 pt-2 flex flex-col gap-1 border-t border-border/30 bg-background/50">
+                        {categories.map(cat => {
+                          const isSelected = getSelectedIds().includes(cat.id);
+                          return (
+                            <button
+                              key={cat.id}
+                              onClick={() => toggleCategory(cat.id)}
+                              data-testid={`button-lobby-toggle-category-${cat.id}`}
+                              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left
+                                ${isSelected ? 'bg-primary/10' : 'hover:bg-muted/40 opacity-50'}`}
+                            >
+                              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all
+                                ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/40'}`}>
+                                {isSelected && <Check className="w-3 h-3 text-white" />}
+                              </div>
+                              <span className="font-medium text-sm">{cat.name}</span>
+                              {cat.isCustom && (
+                                <span className="text-[10px] font-bold uppercase bg-secondary/20 text-secondary px-1.5 py-0.5 rounded ml-auto">
+                                  Custom
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                        {getSelectedIds().length === 0 && (
+                          <p className="text-xs text-destructive text-center py-1 font-medium">
+                            Select at least one category
+                          </p>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
               <PlayfulButton
                 size="lg"
                 className="w-full"
@@ -377,7 +458,7 @@ export default function Room() {
                   selectedCategoryIds: settings.selectedCategoryIds || undefined,
                   hiddenWords: settings.hiddenWords,
                 })}
-                disabled={players.length < 3 || startGame.isPending}
+                disabled={players.length < 3 || startGame.isPending || getSelectedIds().length === 0}
                 data-testid="button-start-game"
               >
                 {startGame.isPending ? "Starting..." : "Start Party!"}
