@@ -74,28 +74,30 @@ export async function registerRoutes(
     try {
       const OpenAI = (await import('openai')).default;
       const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-        baseURL: process.env.OPENAI_API_BASE_URL,
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
       });
       const response = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
-            content: 'You generate word lists for a social deduction party game. Return ONLY a JSON array of 8 single-word items (no descriptions) that fit the category. Words should be well-known, easy to guess and describe. Example: ["Dog","Cat","Rabbit","Hamster","Fish","Bird","Turtle","Snake"]',
+            content: 'You generate word lists for a social deduction party game. Return a JSON object with a "words" key containing an array of 8 common single-word items that fit the category. Words must be well-known, easy to guess and describe. Example: {"words":["Dog","Cat","Rabbit","Hamster","Fish","Bird","Turtle","Snake"]}',
           },
           {
             role: 'user',
-            content: `Category: ${name}`,
+            content: `Generate 8 words for the category: ${name}`,
           },
         ],
         response_format: { type: 'json_object' },
       });
       const content = response.choices[0].message.content || '{}';
       const parsed = JSON.parse(content);
-      const words: string[] = Array.isArray(parsed) ? parsed : (parsed.words || parsed.items || Object.values(parsed)[0] as string[]);
+      const words: string[] = parsed.words || parsed.items || Object.values(parsed)[0] as string[];
+      if (!Array.isArray(words) || words.length === 0) throw new Error("No words returned");
       res.json({ words: words.slice(0, 8) });
     } catch (err: any) {
+      console.error("AI suggest-words error:", err.message);
       res.status(503).json({ message: "AI suggestions unavailable right now" });
     }
   });
