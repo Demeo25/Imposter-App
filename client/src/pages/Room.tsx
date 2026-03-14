@@ -437,11 +437,6 @@ export default function Room() {
                                   {isSelected && <Check className="w-3 h-3 text-white" />}
                                 </div>
                                 <span className="font-medium text-sm">{cat.name}</span>
-                                {cat.isCustom && (
-                                  <span className="text-[10px] font-bold uppercase bg-secondary/20 text-secondary px-1.5 py-0.5 rounded">
-                                    Custom
-                                  </span>
-                                )}
                               </button>
                               <button
                                 onClick={() => setEditingCategory(cat)}
@@ -664,7 +659,7 @@ function NewCategorySheet({ onClose }: { onClose: () => void }) {
       const toAdd = result.words.filter(
         w => !words.map(x => x.toLowerCase()).includes(w.toLowerCase())
       );
-      setWords(prev => [...prev, ...toAdd].slice(0, 20));
+      setWords(prev => [...prev, ...toAdd].slice(0, 50));
       toast({ title: `Added ${toAdd.length} AI-generated words!` });
     } catch (err: any) {
       toast({ title: "AI unavailable", description: err.message, variant: "destructive" });

@@ -66,7 +66,7 @@ export function CategoryEditor({ category, onClose, onDeleted }: CategoryEditorP
         toast({ title: "All suggestions already in list" });
         return;
       }
-      setWords(prev => [...prev, ...toAdd].slice(0, 20));
+      setWords(prev => [...prev, ...toAdd].slice(0, 50));
       toast({ title: `Added ${toAdd.length} AI-generated words!` });
     } catch (err: any) {
       toast({ title: "AI unavailable", description: err.message, variant: "destructive" });

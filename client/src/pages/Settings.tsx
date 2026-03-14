@@ -256,9 +256,6 @@ export default function Settings() {
                       <div className="flex-1 px-4 py-3">
                         <div className="flex items-center gap-2">
                           <p className="font-bold">{cat.name}</p>
-                          {cat.isCustom && (
-                            <span className="bg-secondary/20 text-secondary px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">Custom</span>
-                          )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {cat.words.length} words
