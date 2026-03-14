@@ -4,17 +4,27 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // === TABLE DEFINITIONS ===
+export const categories = pgTable("categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  words: text("words").array().notNull(),
+  isCustom: boolean("is_custom").notNull().default(false),
+});
+
 export const rooms = pgTable("rooms", {
   id: serial("id").primaryKey(),
   code: varchar("code", { length: 6 }).notNull().unique(),
-  status: varchar("status", { length: 20 }).notNull().default("waiting"), // waiting, revealing, playing, voting, finished
+  status: varchar("status", { length: 20 }).notNull().default("waiting"),
   playerCount: integer("player_count").notNull().default(4),
   imposterCount: integer("imposter_count").notNull().default(1),
   currentCategory: text("current_category"),
   currentWord: text("current_word"),
   revealIndex: integer("reveal_index").notNull().default(0),
-  revealStep: varchar("reveal_step", { length: 20 }).notNull().default("name"), // name, word, next
+  revealStep: varchar("reveal_step", { length: 20 }).notNull().default("name"),
   startingPlayerId: integer("starting_player_id"),
+  selectedCategoryIds: integer("selected_category_ids").array().notNull().default([]),
+  revealedPlayerIds: integer("revealed_player_ids").array().notNull().default([]),
+  gameEnded: boolean("game_ended").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -27,6 +37,7 @@ export const players = pgTable("players", {
   score: integer("score").notNull().default(0),
   votedForId: integer("voted_for_id"),
   eliminated: boolean("eliminated").notNull().default(false),
+  forgotWordUsed: boolean("forgot_word_used").notNull().default(false),
 });
 
 export const clues = pgTable("clues", {
@@ -38,6 +49,10 @@ export const clues = pgTable("clues", {
 });
 
 // === RELATIONS ===
+export const categoriesRelations = relations(categories, ({ many }) => ({
+  rooms: many(rooms),
+}));
+
 export const roomsRelations = relations(rooms, ({ many }) => ({
   players: many(players),
   clues: many(clues),
@@ -62,6 +77,7 @@ export const cluesRelations = relations(clues, ({ one }) => ({
 }));
 
 // === BASE SCHEMAS ===
+export const insertCategorySchema = createInsertSchema(categories).omit({ id: true });
 export const insertRoomSchema = createInsertSchema(rooms).omit({ id: true, createdAt: true });
 export const insertPlayerSchema = createInsertSchema(players).omit({ id: true });
 export const insertClueSchema = createInsertSchema(clues).omit({ id: true, createdAt: true });
@@ -69,37 +85,23 @@ export const insertClueSchema = createInsertSchema(clues).omit({ id: true, creat
 // === EXPLICIT API CONTRACT TYPES ===
 
 // Base types
+export type Category = typeof categories.$inferSelect;
 export type Room = typeof rooms.$inferSelect;
 export type Player = typeof players.$inferSelect;
 export type Clue = typeof clues.$inferSelect;
 
+export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type InsertRoom = z.infer<typeof insertRoomSchema>;
 export type InsertPlayer = z.infer<typeof insertPlayerSchema>;
 export type InsertClue = z.infer<typeof insertClueSchema>;
 
 // Request types
 export type CreateRoomRequest = {
-  playerName: string; // The host's name
-};
-export type JoinRoomRequest = {
-  code: string;
   playerName: string;
+  selectedCategoryIds?: number[];
 };
-export type UpdateRoomSettingsRequest = {
-  playerCount?: number;
-  imposterCount?: number;
-};
-export type SubmitClueRequest = {
+export type RevealPlayerRequest = {
   playerId: number;
-  word: string;
-};
-export type SubmitVoteRequest = {
-  voterId: number;
-  votedForId: number;
-};
-export type SubmitGuessRequest = {
-  imposterId: number;
-  guessedWord: string;
 };
 
 // Response types
@@ -107,9 +109,4 @@ export type RoomStateResponse = {
   room: Room;
   players: Player[];
   clues: (Clue & { player: Player })[];
-};
-
-export type PlayerSessionResponse = {
-  player: Player;
-  roomCode: string;
 };

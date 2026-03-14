@@ -1,9 +1,9 @@
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import {
-  rooms, players, clues,
-  type Room, type Player, type Clue,
-  type InsertRoom, type InsertPlayer, type InsertClue
+  rooms, players, clues, categories,
+  type Room, type Player, type Clue, type Category,
+  type InsertRoom, type InsertPlayer, type InsertClue, type InsertCategory
 } from "@shared/schema";
 
 export interface IStorage {
@@ -20,6 +20,10 @@ export interface IStorage {
   createClue(insertClue: InsertClue): Promise<Clue>;
   getCluesByRoom(roomId: number): Promise<Clue[]>;
   clearCluesByRoom(roomId: number): Promise<void>;
+
+  getCategories(): Promise<Category[]>;
+  createCategory(insertCategory: InsertCategory): Promise<Category>;
+  getCategoryById(id: number): Promise<Category | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -78,6 +82,20 @@ export class DatabaseStorage implements IStorage {
 
   async clearCluesByRoom(roomId: number): Promise<void> {
     await db.delete(clues).where(eq(clues.roomId, roomId));
+  }
+
+  async getCategories(): Promise<Category[]> {
+    return await db.select().from(categories);
+  }
+
+  async createCategory(insertCategory: InsertCategory): Promise<Category> {
+    const [category] = await db.insert(categories).values(insertCategory).returning();
+    return category;
+  }
+
+  async getCategoryById(id: number): Promise<Category | undefined> {
+    const [category] = await db.select().from(categories).where(eq(categories.id, id));
+    return category;
   }
 }
 

@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 
-const WORDS: Record<string, string[]> = {
+const DEFAULT_WORDS: Record<string, string[]> = {
   "Sports": ["Hockey", "Basketball", "Tennis", "Soccer", "Baseball", "Golf", "Volleyball", "Rugby"],
   "Animals": ["Elephant", "Giraffe", "Penguin", "Lion", "Tiger", "Kangaroo", "Monkey", "Bear"],
   "Food": ["Pizza", "Burger", "Sushi", "Taco", "Pasta", "Salad", "Steak", "Sandwich"],
@@ -21,15 +21,59 @@ function generateRoomCode() {
   return code;
 }
 
+async function initializeDefaultCategories() {
+  const existing = await storage.getCategories();
+  if (existing.length === 0) {
+    for (const [name, words] of Object.entries(DEFAULT_WORDS)) {
+      await storage.createCategory({
+        name,
+        words,
+        isCustom: false,
+      });
+    }
+  }
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Initialize default categories on startup
+  await initializeDefaultCategories();
 
+  // ========== CATEGORIES ==========
+  app.get(api.categories.list.path, async (req, res) => {
+    const cats = await storage.getCategories();
+    res.status(200).json(cats);
+  });
+
+  app.post(api.categories.create.path, async (req, res) => {
+    try {
+      const input = api.categories.create.input.parse(req.body);
+      const cat = await storage.createCategory({
+        name: input.name,
+        words: input.words,
+        isCustom: true,
+      });
+      res.status(201).json(cat);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      throw err;
+    }
+  });
+
+  // ========== ROOMS ==========
   app.post(api.rooms.create.path, async (req, res) => {
     try {
       const input = api.rooms.create.input.parse(req.body);
       const code = generateRoomCode();
+      
+      const selectedCategoryIds = input.selectedCategoryIds || [];
       
       const room = await storage.createRoom({
         code,
@@ -38,6 +82,7 @@ export async function registerRoutes(
         imposterCount: 1,
         currentCategory: null,
         currentWord: null,
+        selectedCategoryIds,
       });
 
       const player = await storage.createPlayer({
@@ -62,42 +107,6 @@ export async function registerRoutes(
     }
   });
 
-  app.post(api.rooms.join.path, async (req, res) => {
-    try {
-      const input = api.rooms.join.input.parse(req.body);
-      const code = req.params.code.toUpperCase();
-      
-      const room = await storage.getRoomByCode(code);
-      if (!room) {
-        return res.status(404).json({ message: "Room not found" });
-      }
-
-      if (room.status !== "waiting") {
-        return res.status(400).json({ message: "Game already started" });
-      }
-
-      const player = await storage.createPlayer({
-        roomId: room.id,
-        name: input.playerName,
-        isHost: false,
-        isImposter: false,
-        score: 0,
-        eliminated: false,
-        votedForId: null,
-      });
-
-      res.status(200).json({ room, player });
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
-        });
-      }
-      throw err;
-    }
-  });
-
   app.get(api.rooms.get.path, async (req, res) => {
     const code = req.params.code.toUpperCase();
     const room = await storage.getRoomByCode(code);
@@ -108,36 +117,12 @@ export async function registerRoutes(
     const players = await storage.getPlayersByRoom(room.id);
     const clues = await storage.getCluesByRoom(room.id);
 
-    // Map clues to include player
     const cluesWithPlayers = clues.map(clue => {
       const player = players.find(p => p.id === clue.playerId);
       return { ...clue, player: player! };
     });
 
     res.status(200).json({ room, players, clues: cluesWithPlayers });
-  });
-
-  app.patch(api.rooms.settings.path, async (req, res) => {
-    try {
-      const input = api.rooms.settings.input.parse(req.body);
-      const code = req.params.code.toUpperCase();
-      
-      const room = await storage.getRoomByCode(code);
-      if (!room) {
-        return res.status(404).json({ message: "Room not found" });
-      }
-
-      const updated = await storage.updateRoom(room.id, input);
-      res.status(200).json(updated);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
-        });
-      }
-      throw err;
-    }
   });
 
   app.post(api.rooms.start.path, async (req, res) => {
@@ -162,54 +147,82 @@ export async function registerRoutes(
       await storage.updatePlayer(players[i].id, {
         isImposter: imposterIndices.has(i),
         votedForId: null,
+        forgotWordUsed: false,
       });
     }
 
-    // Pick random category and word
-    const categories = Object.keys(WORDS);
-    const category = categories[Math.floor(Math.random() * categories.length)];
-    const wordList = WORDS[category];
-    const word = wordList[Math.floor(Math.random() * wordList.length)];
+    // Pick random category and word from selected categories
+    let selectedCatIds = room.selectedCategoryIds || [];
+    if (selectedCatIds.length === 0) {
+      const allCats = await storage.getCategories();
+      selectedCatIds = allCats.map(c => c.id);
+    }
+
+    let selectedCategory: any = null;
+    let selectedWord: string | null = null;
+
+    for (const catId of selectedCatIds) {
+      const cat = await storage.getCategoryById(catId);
+      if (cat && cat.words.length > 0) {
+        selectedCategory = cat;
+        selectedWord = cat.words[Math.floor(Math.random() * cat.words.length)];
+        break;
+      }
+    }
+
+    if (!selectedCategory || !selectedWord) {
+      return res.status(400).json({ message: "No categories available" });
+    }
 
     const updated = await storage.updateRoom(room.id, {
       status: "revealing",
-      currentCategory: category,
-      currentWord: word,
-      revealIndex: 0,
-      revealStep: "name",
-      startingPlayerId: players[Math.floor(Math.random() * players.length)].id,
+      currentCategory: selectedCategory.name,
+      currentWord: selectedWord,
+      revealedPlayerIds: [],
     });
 
     res.status(200).json(updated);
   });
 
-  app.post(api.rooms.advanceReveal.path, async (req, res) => {
-    const code = req.params.code.toUpperCase();
-    const room = await storage.getRoomByCode(code);
-    if (!room) return res.status(404).json({ message: "Room not found" });
+  app.post(api.rooms.revealPlayer.path, async (req, res) => {
+    try {
+      const input = api.rooms.revealPlayer.input.parse(req.body);
+      const code = req.params.code.toUpperCase();
+      const room = await storage.getRoomByCode(code);
+      if (!room) return res.status(404).json({ message: "Room not found" });
 
-    const players = await storage.getPlayersByRoom(room.id);
-    let { revealIndex, revealStep, status } = room;
-
-    if (revealStep === "name") {
-      revealStep = "word";
-    } else if (revealStep === "word") {
-      revealStep = "next";
-    } else if (revealStep === "next") {
-      if (revealIndex < players.length - 1) {
-        revealIndex++;
-        revealStep = "name";
-      } else {
-        status = "playing";
+      const revealedIds = room.revealedPlayerIds || [];
+      if (!revealedIds.includes(input.playerId)) {
+        revealedIds.push(input.playerId);
       }
-    }
 
-    const updated = await storage.updateRoom(room.id, {
-      revealIndex,
-      revealStep,
-      status
-    });
-    res.status(200).json(updated);
+      const players = await storage.getPlayersByRoom(room.id);
+      let status = room.status;
+      let startingPlayerId = room.startingPlayerId;
+
+      if (revealedIds.length === players.length) {
+        status = "playing";
+        if (!startingPlayerId) {
+          startingPlayerId = players[Math.floor(Math.random() * players.length)].id;
+        }
+      }
+
+      const updated = await storage.updateRoom(room.id, {
+        revealedPlayerIds: revealedIds,
+        status,
+        startingPlayerId,
+      });
+
+      res.status(200).json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      throw err;
+    }
   });
 
   app.post(api.rooms.addPlayer.path, async (req, res) => {
@@ -274,12 +287,10 @@ export async function registerRoutes(
         votedForId: input.votedForId,
       });
 
-      // Check if everyone voted
       const players = await storage.getPlayersByRoom(room.id);
       const votes = players.filter(p => p.votedForId !== null);
       
       if (votes.length === players.length) {
-        // Tally votes
         const voteCounts: Record<number, number> = {};
         for (const p of votes) {
           if (p.votedForId) {
@@ -294,7 +305,6 @@ export async function registerRoutes(
             maxVotes = count;
             eliminatedId = parseInt(idStr);
           } else if (count === maxVotes) {
-            // Tie - no one eliminated (or we could handle tiebreaker, keep it simple for now)
             eliminatedId = null; 
           }
         }
@@ -318,27 +328,16 @@ export async function registerRoutes(
     }
   });
 
-  app.post(api.rooms.guess.path, async (req, res) => {
-    try {
-      const input = api.rooms.guess.input.parse(req.body);
-      const code = req.params.code.toUpperCase();
-      
-      const room = await storage.getRoomByCode(code);
-      if (!room) return res.status(404).json({ message: "Room not found" });
+  app.post(api.rooms.endGame.path, async (req, res) => {
+    const code = req.params.code.toUpperCase();
+    const room = await storage.getRoomByCode(code);
+    if (!room) return res.status(404).json({ message: "Room not found" });
 
-      const correct = room.currentWord?.toLowerCase() === input.guessedWord.toLowerCase().trim();
-      
-      // We can record score if correct, but for now we just return if they guessed it correctly.
-      res.status(200).json({ correct, room });
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
-        });
-      }
-      throw err;
-    }
+    const updated = await storage.updateRoom(room.id, {
+      gameEnded: true,
+    });
+
+    res.status(200).json(updated);
   });
 
   app.post(api.rooms.next.path, async (req, res) => {
@@ -346,22 +345,23 @@ export async function registerRoutes(
     const room = await storage.getRoomByCode(code);
     if (!room) return res.status(404).json({ message: "Room not found" });
 
-    // Reset room
     const updated = await storage.updateRoom(room.id, {
       status: "waiting",
       currentCategory: null,
       currentWord: null,
+      gameEnded: false,
+      revealedPlayerIds: [],
     });
 
     await storage.clearCluesByRoom(room.id);
     
-    // Reset players
     const players = await storage.getPlayersByRoom(room.id);
     for (const p of players) {
       await storage.updatePlayer(p.id, {
         isImposter: false,
         votedForId: null,
         eliminated: false,
+        forgotWordUsed: false,
       });
     }
 

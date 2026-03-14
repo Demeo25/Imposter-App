@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { rooms, players, clues } from './schema';
+import { rooms, players, clues, categories } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -15,12 +15,34 @@ export const errorSchemas = {
 };
 
 export const api = {
+  categories: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/categories' as const,
+      responses: {
+        200: z.array(z.custom<typeof categories.$inferSelect>()),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/categories' as const,
+      input: z.object({
+        name: z.string().min(1),
+        words: z.array(z.string().min(1)),
+      }),
+      responses: {
+        201: z.custom<typeof categories.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+  },
   rooms: {
     create: {
       method: 'POST' as const,
       path: '/api/rooms' as const,
       input: z.object({
         playerName: z.string().min(1, "Name is required"),
+        selectedCategoryIds: z.array(z.number()).optional(),
       }),
       responses: {
         201: z.object({
@@ -28,21 +50,6 @@ export const api = {
           player: z.custom<typeof players.$inferSelect>(),
         }),
         400: errorSchemas.validation,
-      },
-    },
-    join: {
-      method: 'POST' as const,
-      path: '/api/rooms/:code/join' as const,
-      input: z.object({
-        playerName: z.string().min(1, "Name is required"),
-      }),
-      responses: {
-        200: z.object({
-          room: z.custom<typeof rooms.$inferSelect>(),
-          player: z.custom<typeof players.$inferSelect>(),
-        }),
-        400: errorSchemas.validation,
-        404: errorSchemas.notFound,
       },
     },
     get: {
@@ -61,31 +68,24 @@ export const api = {
         404: errorSchemas.notFound,
       },
     },
-    settings: {
-      method: 'PATCH' as const,
-      path: '/api/rooms/:code/settings' as const,
-      input: z.object({
-        playerCount: z.number().min(3).max(20).optional(),
-        imposterCount: z.number().min(1).max(5).optional(),
-      }),
-      responses: {
-        200: z.custom<typeof rooms.$inferSelect>(),
-        400: errorSchemas.validation,
-        404: errorSchemas.notFound,
-      },
-    },
     start: {
       method: 'POST' as const,
       path: '/api/rooms/:code/start' as const,
+      input: z.object({
+        selectedCategoryIds: z.array(z.number()).optional(),
+      }).optional(),
       responses: {
         200: z.custom<typeof rooms.$inferSelect>(),
         400: errorSchemas.validation,
         404: errorSchemas.notFound,
       },
     },
-    advanceReveal: {
+    revealPlayer: {
       method: 'POST' as const,
-      path: '/api/rooms/:code/reveal' as const,
+      path: '/api/rooms/:code/reveal-player' as const,
+      input: z.object({
+        playerId: z.number(),
+      }),
       responses: {
         200: z.custom<typeof rooms.$inferSelect>(),
         404: errorSchemas.notFound,
@@ -136,19 +136,11 @@ export const api = {
         404: errorSchemas.notFound,
       },
     },
-    guess: {
+    endGame: {
       method: 'POST' as const,
-      path: '/api/rooms/:code/guess' as const,
-      input: z.object({
-        imposterId: z.number(),
-        guessedWord: z.string().min(1),
-      }),
+      path: '/api/rooms/:code/end-game' as const,
       responses: {
-        200: z.object({
-          correct: z.boolean(),
-          room: z.custom<typeof rooms.$inferSelect>(),
-        }),
-        400: errorSchemas.validation,
+        200: z.custom<typeof rooms.$inferSelect>(),
         404: errorSchemas.notFound,
       },
     },
@@ -176,12 +168,9 @@ export function buildUrl(path: string, params?: Record<string, string | number>)
 }
 
 export type CreateRoomInput = z.infer<typeof api.rooms.create.input>;
-export type JoinRoomInput = z.infer<typeof api.rooms.join.input>;
-export type RoomSettingsInput = z.infer<typeof api.rooms.settings.input>;
-export type ClueInput = z.infer<typeof api.rooms.clue.input>;
-export type VoteInput = z.infer<typeof api.rooms.vote.input>;
-export type GuessInput = z.infer<typeof api.rooms.guess.input>;
+export type CreateCategoryInput = z.infer<typeof api.categories.create.input>;
+export type RevealPlayerInput = z.infer<typeof api.rooms.revealPlayer.input>;
 
 export type RoomSessionResponse = z.infer<typeof api.rooms.create.responses[201]>;
 export type RoomStateResponse = z.infer<typeof api.rooms.get.responses[200]>;
-export type GuessResponse = z.infer<typeof api.rooms.guess.responses[200]>;
+export type CategoriesListResponse = z.infer<typeof api.categories.list.responses[200]>;
