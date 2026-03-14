@@ -47,6 +47,59 @@ export async function registerRoutes(
     res.status(200).json(cats);
   });
 
+  app.patch('/api/categories/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+    const { words } = req.body;
+    if (!Array.isArray(words)) {
+      return res.status(400).json({ message: "words must be an array" });
+    }
+    const cat = await storage.getCategoryById(id);
+    if (!cat) return res.status(404).json({ message: "Category not found" });
+    const updated = await storage.updateCategory(id, { words });
+    res.status(200).json(updated);
+  });
+
+  app.delete('/api/categories/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+    const cat = await storage.getCategoryById(id);
+    if (!cat) return res.status(404).json({ message: "Category not found" });
+    if (!cat.isCustom) return res.status(403).json({ message: "Cannot delete default categories" });
+    await storage.deleteCategory(id);
+    res.status(204).send();
+  });
+
+  app.post('/api/suggest-words', async (req, res) => {
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ message: "Category name required" });
+    try {
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+        baseURL: process.env.OPENAI_API_BASE_URL,
+      });
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You generate word lists for a social deduction party game. Return ONLY a JSON array of 8 single-word items (no descriptions) that fit the category. Words should be well-known, easy to guess and describe. Example: ["Dog","Cat","Rabbit","Hamster","Fish","Bird","Turtle","Snake"]',
+          },
+          {
+            role: 'user',
+            content: `Category: ${name}`,
+          },
+        ],
+        response_format: { type: 'json_object' },
+      });
+      const content = response.choices[0].message.content || '{}';
+      const parsed = JSON.parse(content);
+      const words: string[] = Array.isArray(parsed) ? parsed : (parsed.words || parsed.items || Object.values(parsed)[0] as string[]);
+      res.json({ words: words.slice(0, 8) });
+    } catch (err: any) {
+      res.status(503).json({ message: "AI suggestions unavailable right now" });
+    }
+  });
+
   app.post(api.categories.create.path, async (req, res) => {
     try {
       const input = api.categories.create.input.parse(req.body);

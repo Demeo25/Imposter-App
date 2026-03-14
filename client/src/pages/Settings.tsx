@@ -1,89 +1,14 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { useCategories, useCreateCategory } from "@/hooks/use-game";
+import { useCategories, useCreateCategory, useSuggestWords } from "@/hooks/use-game";
 import { useSettings } from "@/hooks/use-settings";
+import { CategoryEditor } from "@/components/CategoryEditor";
 import { PlayfulButton } from "@/components/ui/playful-button";
 import { Input } from "@/components/ui/input";
-import { Loader2, ArrowLeft, ChevronRight, Plus, Trash2, Check, Eye, EyeOff } from "lucide-react";
+import { Loader2, ArrowLeft, ChevronRight, Plus, Trash2, Check, Pencil, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Category } from "@shared/schema";
-
-// ─── Category detail view ───────────────────────────────────────────────────
-function CategoryDetail({
-  category,
-  isSelected,
-  hiddenWords,
-  onToggleCategory,
-  onToggleWord,
-  onBack,
-}: {
-  category: Category;
-  isSelected: boolean;
-  hiddenWords: string[];
-  onToggleCategory: () => void;
-  onToggleWord: (word: string) => void;
-  onBack: () => void;
-}) {
-  return (
-    <motion.div
-      initial={{ x: 40, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: 40, opacity: 0 }}
-      className="flex flex-col gap-5"
-    >
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm font-bold"
-        data-testid="button-back-to-list"
-      >
-        <ArrowLeft className="w-4 h-4" /> Back to categories
-      </button>
-
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-display">{category.name}</h2>
-        <button
-          onClick={onToggleCategory}
-          data-testid={`button-toggle-category-detail`}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm border-2 transition-all
-            ${isSelected ? 'bg-primary text-white border-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}
-        >
-          {isSelected ? <><Check className="w-4 h-4" /> Active</> : 'Inactive'}
-        </button>
-      </div>
-
-      <p className="text-sm text-muted-foreground">
-        Tap a word to hide it from random selection. Hidden words won't be used in games.
-      </p>
-
-      <div className="grid grid-cols-2 gap-2">
-        {category.words.map(word => {
-          const isHidden = hiddenWords.includes(word);
-          return (
-            <button
-              key={word}
-              onClick={() => onToggleWord(word)}
-              data-testid={`button-word-${word}`}
-              className={`flex items-center justify-between px-4 py-3 rounded-xl border-2 font-medium text-sm transition-all
-                ${isHidden
-                  ? 'bg-muted border-muted text-muted-foreground opacity-50'
-                  : 'bg-card border-border hover:border-primary/50'}`}
-            >
-              <span className={isHidden ? 'line-through' : ''}>{word}</span>
-              {isHidden
-                ? <EyeOff className="w-4 h-4 opacity-40" />
-                : <Eye className="w-4 h-4 opacity-20" />}
-            </button>
-          );
-        })}
-      </div>
-
-      <p className="text-xs text-muted-foreground text-center">
-        {category.words.length - hiddenWords.length} / {category.words.length} words active
-      </p>
-    </motion.div>
-  );
-}
 
 // ─── Custom category builder ────────────────────────────────────────────────
 function CustomCategoryBuilder({ onDone }: { onDone: () => void }) {
@@ -92,6 +17,7 @@ function CustomCategoryBuilder({ onDone }: { onDone: () => void }) {
   const [words, setWords] = useState<string[]>([]);
   const { toast } = useToast();
   const createCategory = useCreateCategory();
+  const suggestWords = useSuggestWords();
 
   const addWord = () => {
     const trimmed = wordInput.trim();
@@ -104,12 +30,29 @@ function CustomCategoryBuilder({ onDone }: { onDone: () => void }) {
     setWordInput("");
   };
 
+  const handleAiFill = async () => {
+    if (!name.trim()) {
+      toast({ title: "Enter a category name first", variant: "destructive" });
+      return;
+    }
+    try {
+      const result = await suggestWords.mutateAsync(name.trim());
+      const toAdd = result.words.filter(
+        w => !words.map(x => x.toLowerCase()).includes(w.toLowerCase())
+      );
+      setWords(prev => [...prev, ...toAdd]);
+      toast({ title: `Added ${toAdd.length} AI words for "${name}"!` });
+    } catch (err: any) {
+      toast({ title: "AI unavailable", description: err.message, variant: "destructive" });
+    }
+  };
+
   const handleSave = async () => {
     if (!name.trim()) return toast({ title: "Category name required", variant: "destructive" });
     if (words.length < 2) return toast({ title: "Add at least 2 words", variant: "destructive" });
     try {
       await createCategory.mutateAsync({ name: name.trim(), words });
-      toast({ title: `"${name.trim()}" category created!` });
+      toast({ title: `"${name.trim()}" created!` });
       onDone();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -131,7 +74,7 @@ function CustomCategoryBuilder({ onDone }: { onDone: () => void }) {
         <ArrowLeft className="w-4 h-4" /> Back to categories
       </button>
 
-      <h2 className="text-3xl font-display">Build a Category</h2>
+      <h2 className="text-3xl font-display">New Category</h2>
 
       <div>
         <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground block mb-2">
@@ -145,6 +88,21 @@ function CustomCategoryBuilder({ onDone }: { onDone: () => void }) {
           data-testid="input-category-name"
         />
       </div>
+
+      {/* AI Fill button */}
+      <PlayfulButton
+        variant="outline"
+        className="w-full"
+        onClick={handleAiFill}
+        disabled={suggestWords.isPending || !name.trim()}
+        data-testid="button-ai-fill-new"
+      >
+        {suggestWords.isPending ? (
+          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating words...</>
+        ) : (
+          <><Sparkles className="w-4 h-4 mr-2" /> AI Fill Words</>
+        )}
+      </PlayfulButton>
 
       <div>
         <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground block mb-2">
@@ -165,7 +123,7 @@ function CustomCategoryBuilder({ onDone }: { onDone: () => void }) {
         </div>
 
         {words.length > 0 && (
-          <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+          <div className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto">
             {words.map(w => (
               <div
                 key={w}
@@ -205,10 +163,9 @@ export default function Settings() {
   const { settings, update } = useSettings();
   const { toast } = useToast();
 
-  const [view, setView] = useState<'list' | 'detail' | 'custom'>('list');
-  const [activeCategory, setActiveCategory] = useState<Category | null>(null);
+  const [view, setView] = useState<'list' | 'custom'>('list');
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
-  // Derive selected IDs (null = all selected)
   const getSelectedIds = () => {
     if (!categories) return [];
     return settings.selectedCategoryIds ?? categories.map(c => c.id);
@@ -221,14 +178,6 @@ export default function Settings() {
       ? current.filter(x => x !== id)
       : [...current, id];
     update({ selectedCategoryIds: updated });
-  };
-
-  const toggleWord = (catId: number, word: string) => {
-    const existing = settings.hiddenWords[catId] || [];
-    const updated = existing.includes(word)
-      ? existing.filter(w => w !== word)
-      : [...existing, word];
-    update({ hiddenWords: { ...settings.hiddenWords, [catId]: updated } });
   };
 
   const handleDone = () => {
@@ -273,19 +222,17 @@ export default function Settings() {
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
-                <h1 className="text-3xl font-display">Category Settings</h1>
+                <h1 className="text-3xl font-display">Categories</h1>
               </div>
 
               <p className="text-sm text-muted-foreground">
-                Choose which categories to include. Tap a category to hide specific words.
+                Choose which categories to include in games. Tap the pencil to add or remove words.
               </p>
 
               {/* Category list */}
               <div className="flex flex-col gap-2">
                 {categories.map(cat => {
                   const isSelected = selectedIds.includes(cat.id);
-                  const hidden = settings.hiddenWords[cat.id] || [];
-                  const activeCount = cat.words.length - hidden.length;
 
                   return (
                     <div
@@ -305,25 +252,26 @@ export default function Settings() {
                         </div>
                       </button>
 
-                      {/* Open detail */}
-                      <button
-                        onClick={() => { setActiveCategory(cat); setView('detail'); }}
-                        className="flex-1 flex items-center justify-between px-4 py-4 text-left hover:bg-muted/20 transition-colors"
-                        data-testid={`button-open-category-${cat.id}`}
-                      >
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-bold">{cat.name}</p>
-                            {cat.isCustom && (
-                              <span className="bg-secondary/20 text-secondary px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">Custom</span>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {activeCount} / {cat.words.length} words active
-                            {hidden.length > 0 && ` (${hidden.length} hidden)`}
-                          </p>
+                      {/* Category info */}
+                      <div className="flex-1 px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold">{cat.name}</p>
+                          {cat.isCustom && (
+                            <span className="bg-secondary/20 text-secondary px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">Custom</span>
+                          )}
                         </div>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {cat.words.length} words
+                        </p>
+                      </div>
+
+                      {/* Edit words button */}
+                      <button
+                        onClick={() => setEditingCategory(cat)}
+                        data-testid={`button-edit-category-${cat.id}`}
+                        className="w-12 h-full flex items-center justify-center border-l-2 border-border/30 hover:bg-muted/30 transition-colors flex-shrink-0"
+                      >
+                        <Pencil className="w-4 h-4 text-muted-foreground" />
                       </button>
                     </div>
                   );
@@ -338,7 +286,7 @@ export default function Settings() {
                 <span className="text-muted-foreground"> categories active for games</span>
               </div>
 
-              {/* Build custom */}
+              {/* New category */}
               <PlayfulButton
                 variant="outline"
                 className="w-full"
@@ -346,7 +294,7 @@ export default function Settings() {
                 data-testid="button-build-custom"
               >
                 <Plus className="w-5 h-5 mr-2" />
-                Build a Custom Category
+                New Category
               </PlayfulButton>
 
               <PlayfulButton
@@ -360,22 +308,20 @@ export default function Settings() {
             </motion.div>
           )}
 
-          {/* ── CATEGORY DETAIL ── */}
-          {view === 'detail' && activeCategory && (
-            <CategoryDetail
-              key="detail"
-              category={activeCategory}
-              isSelected={selectedIds.includes(activeCategory.id)}
-              hiddenWords={settings.hiddenWords[activeCategory.id] || []}
-              onToggleCategory={() => toggleCategory(activeCategory.id)}
-              onToggleWord={word => toggleWord(activeCategory.id, word)}
-              onBack={() => setView('list')}
-            />
-          )}
-
           {/* ── CUSTOM CATEGORY BUILDER ── */}
           {view === 'custom' && (
             <CustomCategoryBuilder key="custom" onDone={() => setView('list')} />
+          )}
+        </AnimatePresence>
+
+        {/* ── CATEGORY WORD EDITOR (modal) ── */}
+        <AnimatePresence>
+          {editingCategory && (
+            <CategoryEditor
+              category={editingCategory}
+              onClose={() => setEditingCategory(null)}
+              onDeleted={() => setEditingCategory(null)}
+            />
           )}
         </AnimatePresence>
       </div>

@@ -2,14 +2,15 @@ import { useState } from "react";
 import { useRoute } from "wouter";
 import { useRoom, useStartGame, useNextRound, useRevealPlayer, useEndGame, useCategories } from "@/hooks/use-game";
 import { useSettings } from "@/hooks/use-settings";
+import { CategoryEditor } from "@/components/CategoryEditor";
 import { PlayfulButton } from "@/components/ui/playful-button";
-import { Loader2, UserPlus, Trash2, ChevronDown, ChevronUp, Eye, Ghost, Star, Minus, Plus, Check, Settings2 } from "lucide-react";
+import { Loader2, UserPlus, Trash2, ChevronDown, ChevronUp, Eye, Ghost, Star, Minus, Plus, Check, Settings2, Pencil } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { buildUrl, api } from "@shared/routes";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Player, Room } from "@shared/schema";
+import type { Player, Room, Category } from "@shared/schema";
 
 import { PhaseFinished } from "./phases/PhaseFinished";
 
@@ -222,6 +223,7 @@ export default function Room() {
   const [newName, setNewName] = useState("");
   const [imposterCount, setImposterCount] = useState(1);
   const [showCategories, setShowCategories] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
   const getSelectedIds = () => {
     if (!categories) return [];
@@ -420,24 +422,34 @@ export default function Room() {
                         {categories.map(cat => {
                           const isSelected = getSelectedIds().includes(cat.id);
                           return (
-                            <button
+                            <div
                               key={cat.id}
-                              onClick={() => toggleCategory(cat.id)}
-                              data-testid={`button-lobby-toggle-category-${cat.id}`}
-                              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left
-                                ${isSelected ? 'bg-primary/10' : 'hover:bg-muted/40 opacity-50'}`}
+                              className={`flex items-center rounded-lg transition-colors ${isSelected ? 'bg-primary/10' : 'opacity-50'}`}
                             >
-                              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all
-                                ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/40'}`}>
-                                {isSelected && <Check className="w-3 h-3 text-white" />}
-                              </div>
-                              <span className="font-medium text-sm">{cat.name}</span>
-                              {cat.isCustom && (
-                                <span className="text-[10px] font-bold uppercase bg-secondary/20 text-secondary px-1.5 py-0.5 rounded ml-auto">
-                                  Custom
-                                </span>
-                              )}
-                            </button>
+                              <button
+                                onClick={() => toggleCategory(cat.id)}
+                                data-testid={`button-lobby-toggle-category-${cat.id}`}
+                                className="flex items-center gap-3 flex-1 px-3 py-2.5 text-left"
+                              >
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all
+                                  ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/40'}`}>
+                                  {isSelected && <Check className="w-3 h-3 text-white" />}
+                                </div>
+                                <span className="font-medium text-sm">{cat.name}</span>
+                                {cat.isCustom && (
+                                  <span className="text-[10px] font-bold uppercase bg-secondary/20 text-secondary px-1.5 py-0.5 rounded">
+                                    Custom
+                                  </span>
+                                )}
+                              </button>
+                              <button
+                                onClick={() => setEditingCategory(cat)}
+                                data-testid={`button-lobby-edit-category-${cat.id}`}
+                                className="px-3 py-2.5 text-muted-foreground hover:text-foreground transition-colors"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           );
                         })}
                         {getSelectedIds().length === 0 && (
@@ -587,6 +599,17 @@ export default function Room() {
             player={revealingPlayer}
             room={room}
             onDismiss={handleRevealDismiss}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Category word editor */}
+      <AnimatePresence>
+        {editingCategory && (
+          <CategoryEditor
+            category={editingCategory}
+            onClose={() => setEditingCategory(null)}
+            onDeleted={() => setEditingCategory(null)}
           />
         )}
       </AnimatePresence>

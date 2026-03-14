@@ -24,6 +24,8 @@ export interface IStorage {
   getCategories(): Promise<Category[]>;
   createCategory(insertCategory: InsertCategory): Promise<Category>;
   getCategoryById(id: number): Promise<Category | undefined>;
+  updateCategory(id: number, updates: { words: string[] }): Promise<Category>;
+  deleteCategory(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -96,6 +98,18 @@ export class DatabaseStorage implements IStorage {
   async getCategoryById(id: number): Promise<Category | undefined> {
     const [category] = await db.select().from(categories).where(eq(categories.id, id));
     return category;
+  }
+
+  async updateCategory(id: number, updates: { words: string[] }): Promise<Category> {
+    const [category] = await db.update(categories)
+      .set(updates)
+      .where(eq(categories.id, id))
+      .returning();
+    return category;
+  }
+
+  async deleteCategory(id: number): Promise<void> {
+    await db.delete(categories).where(eq(categories.id, id));
   }
 }
 

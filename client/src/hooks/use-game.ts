@@ -57,6 +57,56 @@ export function useCreateCategory() {
   });
 }
 
+export function useUpdateCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, words }: { id: number; words: string[] }) => {
+      const res = await fetch(`/api/categories/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ words }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Failed to update category');
+      }
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories'] }),
+  });
+}
+
+export function useDeleteCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Failed to delete category');
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories'] }),
+  });
+}
+
+export function useSuggestWords() {
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const res = await fetch('/api/suggest-words', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'AI suggestions unavailable');
+      }
+      return res.json() as Promise<{ words: string[] }>;
+    },
+  });
+}
+
 // ============================================
 // LOBBY MUTATIONS
 // ============================================
