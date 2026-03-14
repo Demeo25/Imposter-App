@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useCreateRoom } from "@/hooks/use-game";
 import { PlayfulButton } from "@/components/ui/playful-button";
 import { Input } from "@/components/ui/input";
-import { Ghost, Settings } from "lucide-react";
+import { Ghost } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
@@ -80,17 +80,6 @@ export default function Home() {
           </motion.form>
         </div>
 
-        {/* Settings button */}
-        <div className="flex justify-center mt-6">
-          <button
-            onClick={() => setLocation('/settings')}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium px-4 py-2 rounded-xl hover:bg-card"
-            data-testid="button-settings"
-          >
-            <Settings className="w-4 h-4" />
-            Category Settings
-          </button>
-        </div>
       </motion.div>
     </div>
   );

@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useRoute } from "wouter";
+import { useRoute, useLocation } from "wouter";
 import { useRoom, useStartGame, useNextRound, useRevealPlayer, useEndGame, useCategories, useCreateCategory, useSuggestWords } from "@/hooks/use-game";
 import { useSettings } from "@/hooks/use-settings";
 import { CategoryEditor } from "@/components/CategoryEditor";
 import { PlayfulButton } from "@/components/ui/playful-button";
-import { Loader2, UserPlus, Trash2, ChevronDown, ChevronUp, Eye, Ghost, Star, Minus, Plus, Check, Settings2, Pencil, Sparkles, X } from "lucide-react";
+import { Loader2, UserPlus, Trash2, ChevronDown, ChevronUp, Eye, Ghost, Star, Minus, Plus, Check, Settings2, Pencil, Sparkles, X, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -208,6 +208,7 @@ function PhasePlaying({
 // ─── Main Room page ─────────────────────────────────────────────────────────
 export default function Room() {
   const [, params] = useRoute("/room/:code");
+  const [, setLocation] = useLocation();
   const code = params?.code;
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -313,7 +314,17 @@ export default function Room() {
               exit={{ opacity: 0 }}
               className="card-playful p-6 flex flex-col gap-5"
             >
-              <h1 className="text-3xl font-display text-center">Party Setup</h1>
+              <div className="flex items-center">
+                <button
+                  onClick={() => setLocation('/')}
+                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium"
+                  data-testid="button-back-home"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back
+                </button>
+                <h1 className="text-3xl font-display flex-1 text-center pr-10">Party Setup</h1>
+              </div>
 
               {/* Add player */}
               <div className="flex gap-2">
