@@ -7,12 +7,14 @@ import NotFound from "@/pages/not-found";
 
 import Home from "@/pages/Home";
 import Room from "@/pages/Room";
+import Settings from "@/pages/Settings";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home}/>
       <Route path="/room/:code" component={Room}/>
+      <Route path="/settings" component={Settings}/>
       <Route component={NotFound} />
     </Switch>
   );

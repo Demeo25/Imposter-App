@@ -73,6 +73,7 @@ export const api = {
       path: '/api/rooms/:code/start' as const,
       input: z.object({
         selectedCategoryIds: z.array(z.number()).optional(),
+        hiddenWords: z.record(z.string(), z.array(z.string())).optional(),
       }).optional(),
       responses: {
         200: z.custom<typeof rooms.$inferSelect>(),

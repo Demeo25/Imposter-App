@@ -133,13 +133,31 @@ export async function registerRoutes(
     }
 
     const players = await storage.getPlayersByRoom(room.id);
+
+    // If status is 'revealing' and all players revealed → advance to playing
+    const revealedIds: number[] = (room.revealedPlayerIds as number[]) || [];
+    if (room.status === "revealing" && revealedIds.length === players.length) {
+      const startingPlayerId = players[Math.floor(Math.random() * players.length)].id;
+      const updated = await storage.updateRoom(room.id, {
+        status: "playing",
+        startingPlayerId,
+      });
+      return res.status(200).json(updated);
+    }
+
     if (players.length < 3) {
       return res.status(400).json({ message: "Not enough players" });
     }
 
+    // Parse optional body params (selectedCategoryIds and hiddenWords)
+    const body = req.body || {};
+    const bodySelectedIds: number[] | undefined = Array.isArray(body.selectedCategoryIds) ? body.selectedCategoryIds : undefined;
+    const hiddenWords: Record<string, string[]> = body.hiddenWords || {};
+
     // Assign imposters
+    const imposterCount = room.imposterCount || 1;
     const imposterIndices = new Set<number>();
-    while (imposterIndices.size < Math.min(room.imposterCount, players.length - 1)) {
+    while (imposterIndices.size < Math.min(imposterCount, players.length - 1)) {
       imposterIndices.add(Math.floor(Math.random() * players.length));
     }
 
@@ -151,27 +169,34 @@ export async function registerRoutes(
       });
     }
 
-    // Pick random category and word from selected categories
-    let selectedCatIds = room.selectedCategoryIds || [];
+    // Determine which categories to draw from
+    let selectedCatIds: number[] = bodySelectedIds || (room.selectedCategoryIds as number[]) || [];
     if (selectedCatIds.length === 0) {
       const allCats = await storage.getCategories();
       selectedCatIds = allCats.map(c => c.id);
     }
 
+    // Shuffle category ids so we pick randomly
+    const shuffledCatIds = [...selectedCatIds].sort(() => Math.random() - 0.5);
+
     let selectedCategory: any = null;
     let selectedWord: string | null = null;
 
-    for (const catId of selectedCatIds) {
+    for (const catId of shuffledCatIds) {
       const cat = await storage.getCategoryById(catId);
-      if (cat && cat.words.length > 0) {
+      if (!cat) continue;
+      // Filter out hidden words
+      const catHidden: string[] = hiddenWords[String(catId)] || [];
+      const available = cat.words.filter(w => !catHidden.includes(w));
+      if (available.length > 0) {
         selectedCategory = cat;
-        selectedWord = cat.words[Math.floor(Math.random() * cat.words.length)];
+        selectedWord = available[Math.floor(Math.random() * available.length)];
         break;
       }
     }
 
     if (!selectedCategory || !selectedWord) {
-      return res.status(400).json({ message: "No categories available" });
+      return res.status(400).json({ message: "No categories available. Check your settings." });
     }
 
     const updated = await storage.updateRoom(room.id, {
@@ -334,7 +359,7 @@ export async function registerRoutes(
     if (!room) return res.status(404).json({ message: "Room not found" });
 
     const updated = await storage.updateRoom(room.id, {
-      gameEnded: true,
+      status: "finished",
     });
 
     res.status(200).json(updated);
