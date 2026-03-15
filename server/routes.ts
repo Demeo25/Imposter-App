@@ -425,17 +425,19 @@ export async function registerRoutes(
     const room = await storage.getRoomByCode(code);
     if (!room) return res.status(404).json({ message: "Room not found" });
 
+    const players = await storage.getPlayersByRoom(room.id);
+    const newStartingPlayerId = players[Math.floor(Math.random() * players.length)].id;
+
     const updated = await storage.updateRoom(room.id, {
       status: "waiting",
       currentCategory: null,
       currentWord: null,
       gameEnded: false,
       revealedPlayerIds: [],
+      startingPlayerId: newStartingPlayerId,
     });
 
     await storage.clearCluesByRoom(room.id);
-    
-    const players = await storage.getPlayersByRoom(room.id);
     for (const p of players) {
       await storage.updatePlayer(p.id, {
         isImposter: false,
