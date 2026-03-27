@@ -217,12 +217,12 @@ export default function Settings() {
               <div className="flex items-center gap-4 mb-2">
                 <button
                   onClick={() => setLocation('/')}
-                  className="w-10 h-10 rounded-full bg-card border-2 border-border flex items-center justify-center hover:bg-muted transition-colors"
+                  className="w-10 h-10 rounded-full bg-muted border border-border flex items-center justify-center hover:border-primary hover:text-primary transition-colors"
                   data-testid="button-back-home"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
-                <h1 className="text-3xl font-display">Categories</h1>
+                <h1 className="text-3xl font-display text-gradient">Categories</h1>
               </div>
 
               <p className="text-sm text-muted-foreground">
@@ -237,14 +237,14 @@ export default function Settings() {
                   return (
                     <div
                       key={cat.id}
-                      className="flex items-center bg-card border-2 border-border/50 rounded-2xl overflow-hidden"
+                      className="flex items-center bg-muted/40 border border-border/60 rounded-2xl overflow-hidden"
                     >
                       {/* Select toggle */}
                       <button
                         onClick={() => toggleCategory(cat.id)}
                         data-testid={`button-toggle-category-${cat.id}`}
-                        className={`w-14 h-full flex items-center justify-center border-r-2 border-border/30 transition-colors flex-shrink-0 py-4
-                          ${isSelected ? 'bg-primary/10' : 'bg-muted/20'}`}
+                        className={`w-14 h-full flex items-center justify-center border-r border-border/30 transition-colors flex-shrink-0 py-4
+                          ${isSelected ? 'bg-primary/15' : 'bg-transparent'}`}
                       >
                         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all
                           ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/40'}`}>
@@ -266,7 +266,7 @@ export default function Settings() {
                       <button
                         onClick={() => setEditingCategory(cat)}
                         data-testid={`button-edit-category-${cat.id}`}
-                        className="w-12 h-full flex items-center justify-center border-l-2 border-border/30 hover:bg-muted/30 transition-colors flex-shrink-0"
+                        className="w-12 h-full flex items-center justify-center border-l border-border/30 hover:bg-primary/10 hover:text-primary transition-colors flex-shrink-0"
                       >
                         <Pencil className="w-4 h-4 text-muted-foreground" />
                       </button>
@@ -276,11 +276,11 @@ export default function Settings() {
               </div>
 
               {/* Summary */}
-              <div className="bg-secondary/10 rounded-xl px-4 py-3 text-sm text-center">
-                <span className="font-bold text-foreground">{selectedIds.length}</span>
+              <div className="bg-muted/40 border border-border/60 rounded-xl px-4 py-3 text-sm text-center">
+                <span className="font-bold text-primary">{selectedIds.length}</span>
                 <span className="text-muted-foreground"> of </span>
                 <span className="font-bold text-foreground">{categories.length}</span>
-                <span className="text-muted-foreground"> categories active for games</span>
+                <span className="text-muted-foreground"> categories active</span>
               </div>
 
               {/* New category */}

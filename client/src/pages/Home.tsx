@@ -17,7 +17,6 @@ export default function Home() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    
     try {
       const data = await createRoom.mutateAsync({ playerName: name.trim() });
       setLocation(`/room/${data.room.code}`);
@@ -27,41 +26,58 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <motion.div 
-        initial={{ scale: 0.9, opacity: 0 }}
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Decorative glow orbs */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-primary/8 blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full bg-secondary/8 blur-[80px] pointer-events-none" />
+
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="w-full max-w-md"
+        transition={{ type: "spring", damping: 20 }}
+        className="w-full max-w-md relative z-10"
       >
         {/* Logo */}
         <div className="text-center mb-10">
-          <motion.div 
-            animate={{ y: [0, -10, 0] }} 
+          <motion.div
+            animate={{ y: [0, -10, 0] }}
             transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-            className="inline-block bg-primary text-white p-6 rounded-3xl rotate-3 shadow-xl mb-6"
+            className="inline-block relative mb-6"
           >
-            <Ghost className="w-16 h-16" />
+            <div className="bg-primary/15 border border-primary/30 text-primary p-6 rounded-3xl rotate-3 glow-primary">
+              <Ghost className="w-16 h-16" />
+            </div>
           </motion.div>
-          <h1 className="text-6xl font-display text-primary drop-shadow-sm mb-2 uppercase">Imposter</h1>
-          <p className="text-muted-foreground font-medium text-lg italic">One Device Party Mode</p>
+
+          <h1 className="text-6xl font-display uppercase mb-2 text-gradient drop-shadow-sm">
+            Imposter
+          </h1>
+          <p className="text-muted-foreground font-medium tracking-wide">
+            One Device · Pass &amp; Play
+          </p>
         </div>
 
         {/* Main card */}
         <div className="card-playful p-8">
           <motion.form
-            initial={{ x: 20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
+            initial={{ y: 12, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.1 }}
             onSubmit={handleCreate}
-            className="flex flex-col gap-6"
+            className="flex flex-col gap-5"
           >
-            <h2 className="text-2xl font-bold text-center">Start a Party</h2>
+            <h2 className="text-2xl font-display text-center text-foreground/90">
+              Start a Party
+            </h2>
 
             <div>
-              <label className="block text-sm font-bold mb-2 text-muted-foreground uppercase tracking-wider">Your Name (Host)</label>
+              <label className="block text-xs font-bold mb-2 text-muted-foreground uppercase tracking-widest">
+                Your Name (Host)
+              </label>
               <Input
                 autoFocus
                 placeholder="e.g. Alex"
-                className="h-14 text-lg rounded-xl border-4 border-border/50 focus:border-primary px-4 bg-background"
+                className="h-14 text-lg rounded-xl border border-border bg-muted/60 focus:border-primary focus:ring-0 px-4 placeholder:text-muted-foreground/50"
                 value={name}
                 onChange={e => setName(e.target.value)}
                 maxLength={16}
@@ -71,7 +87,7 @@ export default function Home() {
 
             <PlayfulButton
               type="submit"
-              className="w-full text-xl py-8"
+              className="w-full text-xl py-8 mt-1"
               disabled={createRoom.isPending || !name.trim()}
               data-testid="button-create-party"
             >
@@ -80,6 +96,10 @@ export default function Home() {
           </motion.form>
         </div>
 
+        {/* Footer hint */}
+        <p className="text-center text-muted-foreground/40 text-xs mt-6 tracking-wide">
+          3–12 players · pass the phone · find the imposter
+        </p>
       </motion.div>
     </div>
   );

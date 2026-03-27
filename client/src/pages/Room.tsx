@@ -312,21 +312,22 @@ export default function Room() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="card-playful p-6 flex flex-col gap-5"
+              className="card-playful p-5 flex flex-col gap-4"
             >
-              <div className="flex items-center">
+              {/* Header */}
+              <div className="flex items-center h-10">
                 <button
                   onClick={() => setLocation('/')}
-                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium"
+                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium shrink-0"
                   data-testid="button-back-home"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   Back
                 </button>
-                <h1 className="text-3xl font-display flex-1 text-center pr-10">Party Setup</h1>
+                <h1 className="text-3xl font-display flex-1 text-center pr-10 text-gradient">Party Setup</h1>
               </div>
 
-              {/* Add player */}
+              {/* Add player row */}
               <div className="flex gap-2">
                 <Input
                   placeholder="Player name..."
@@ -335,11 +336,14 @@ export default function Room() {
                   onKeyDown={e => {
                     if (e.key === "Enter" && newName.trim()) addPlayer.mutate(newName.trim());
                   }}
+                  className="h-12 bg-muted/60 border-border focus:border-primary rounded-xl"
                   data-testid="input-player-name"
                 />
                 <PlayfulButton
+                  size="sm"
                   onClick={() => { if (newName.trim()) addPlayer.mutate(newName.trim()); }}
                   disabled={!newName.trim() || addPlayer.isPending}
+                  className="h-12 px-4 shrink-0"
                   data-testid="button-add-player"
                 >
                   <UserPlus className="w-5 h-5" />
@@ -347,52 +351,46 @@ export default function Room() {
               </div>
 
               {/* Player list */}
-              <div className="flex flex-col gap-2 max-h-[35vh] overflow-y-auto">
+              <div className="flex flex-col gap-1.5 max-h-[32vh] overflow-y-auto">
                 {players.map(p => (
                   <div
                     key={p.id}
-                    className="flex items-center justify-between bg-card px-4 py-3 rounded-xl border-2 border-border/50"
+                    className="flex items-center justify-between h-12 bg-muted/40 px-4 rounded-xl border border-border/60"
                   >
-                    <span className="font-bold">{p.name}</span>
-                    <PlayfulButton
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                    <span className="font-bold text-sm">{p.name}</span>
+                    <button
                       onClick={() => removePlayer.mutate(p.id)}
+                      className="text-muted-foreground hover:text-destructive transition-colors p-1"
                       data-testid={`button-remove-player-${p.id}`}
                     >
                       <Trash2 className="w-4 h-4" />
-                    </PlayfulButton>
+                    </button>
                   </div>
                 ))}
                 {players.length === 0 && (
-                  <p className="text-center text-muted-foreground py-4 text-sm">
+                  <p className="text-center text-muted-foreground py-3 text-sm">
                     Add at least 3 players to start
                   </p>
                 )}
               </div>
 
               {/* Imposter count */}
-              <div className="bg-secondary/10 rounded-xl p-4">
-                <p className="text-sm font-bold uppercase tracking-wider mb-3 text-center">
-                  Number of Imposters
+              <div className="bg-muted/40 border border-border/60 rounded-xl px-4 py-3">
+                <p className="text-xs font-bold uppercase tracking-widest mb-3 text-center text-muted-foreground">
+                  Imposters
                 </p>
                 <div className="flex items-center justify-center gap-6">
                   <button
                     onClick={() => setImposterCount(c => Math.max(1, c - 1))}
-                    className="w-10 h-10 rounded-full bg-background border-2 border-border flex items-center justify-center hover:bg-muted transition-colors"
+                    className="w-10 h-10 rounded-full bg-muted border border-border flex items-center justify-center hover:border-primary hover:text-primary transition-colors"
                     data-testid="button-imposter-minus"
                   >
                     <Minus className="w-4 h-4" />
                   </button>
-                  <span className="text-4xl font-display w-12 text-center">{imposterCount}</span>
+                  <span className="text-4xl font-display w-12 text-center text-gradient">{imposterCount}</span>
                   <button
-                    onClick={() =>
-                      setImposterCount(c =>
-                        Math.min(Math.max(1, players.length - 2), c + 1)
-                      )
-                    }
-                    className="w-10 h-10 rounded-full bg-background border-2 border-border flex items-center justify-center hover:bg-muted transition-colors"
+                    onClick={() => setImposterCount(c => Math.min(Math.max(1, players.length - 2), c + 1))}
+                    className="w-10 h-10 rounded-full bg-muted border border-border flex items-center justify-center hover:border-primary hover:text-primary transition-colors"
                     data-testid="button-imposter-plus"
                   >
                     <Plus className="w-4 h-4" />
@@ -401,10 +399,10 @@ export default function Room() {
               </div>
 
               {/* Category selector */}
-              <div className="rounded-xl border-2 border-border/50 overflow-hidden">
+              <div className="border border-border/60 rounded-xl overflow-hidden">
                 <button
                   onClick={() => setShowCategories(v => !v)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-card hover:bg-muted/30 transition-colors"
+                  className="w-full flex items-center justify-between h-12 px-4 bg-muted/40 hover:bg-muted/60 transition-colors"
                   data-testid="button-toggle-categories-panel"
                 >
                   <div className="flex items-center gap-2">
@@ -412,7 +410,7 @@ export default function Room() {
                     <span className="font-bold text-sm">Categories</span>
                     {categories && (
                       <span className="text-xs text-muted-foreground">
-                        ({getSelectedIds().length}/{categories.length} active)
+                        ({getSelectedIds().length}/{categories.length})
                       </span>
                     )}
                   </div>
@@ -430,29 +428,28 @@ export default function Room() {
                       transition={{ duration: 0.2 }}
                       style={{ overflow: "hidden" }}
                     >
-                      <div className="px-3 pb-3 pt-2 flex flex-col gap-1 border-t border-border/30 bg-background/50">
+                      <div className="px-3 pb-3 pt-2 flex flex-col gap-1 border-t border-border/30">
                         {categories.map(cat => {
                           const isSelected = getSelectedIds().includes(cat.id);
                           return (
                             <div
                               key={cat.id}
-                              className={`flex items-center rounded-lg transition-colors ${isSelected ? 'bg-primary/10' : 'opacity-50'}`}
+                              className={`flex items-center h-11 rounded-lg transition-colors ${isSelected ? 'bg-primary/10' : 'opacity-40'}`}
                             >
                               <button
                                 onClick={() => toggleCategory(cat.id)}
                                 data-testid={`button-lobby-toggle-category-${cat.id}`}
-                                className="flex items-center gap-3 flex-1 px-3 py-2.5 text-left"
+                                className="flex items-center gap-3 flex-1 px-3 h-full text-left"
                               >
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all
-                                  ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/40'}`}>
-                                  {isSelected && <Check className="w-3 h-3 text-white" />}
+                                <div className={`w-4.5 h-4.5 w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/40'}`}>
+                                  {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
                                 </div>
                                 <span className="font-medium text-sm">{cat.name}</span>
                               </button>
                               <button
                                 onClick={() => setEditingCategory(cat)}
                                 data-testid={`button-lobby-edit-category-${cat.id}`}
-                                className="px-3 py-2.5 text-muted-foreground hover:text-foreground transition-colors"
+                                className="px-3 h-full text-muted-foreground hover:text-foreground transition-colors"
                               >
                                 <Pencil className="w-3.5 h-3.5" />
                               </button>
@@ -462,7 +459,7 @@ export default function Room() {
                         <button
                           onClick={() => setCreatingCategory(true)}
                           data-testid="button-lobby-new-category"
-                          className="flex items-center gap-2 w-full px-3 py-2.5 text-sm font-medium text-primary hover:bg-primary/5 rounded-lg transition-colors mt-1 border-2 border-dashed border-primary/30"
+                          className="flex items-center gap-2 h-11 w-full px-3 text-sm font-medium text-primary hover:bg-primary/8 rounded-lg transition-colors mt-1 border border-dashed border-primary/40"
                         >
                           <Plus className="w-4 h-4" />
                           New Category

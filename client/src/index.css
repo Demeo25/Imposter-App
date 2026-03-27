@@ -9,44 +9,47 @@
     --font-display: 'Fredoka', cursive;
     --font-sans: 'Outfit', sans-serif;
 
-    /* Playful Startup Palette */
-    --background: 240 25% 98%;
-    --foreground: 222 47% 11%;
-    
-    --primary: 256 85% 65%;
-    --primary-foreground: 210 40% 98%;
-    
-    --secondary: 330 85% 60%;
-    --secondary-foreground: 210 40% 98%;
-    
-    --muted: 240 10% 90%;
-    --muted-foreground: 240 15% 45%;
-    
-    --accent: 180 70% 45%;
-    --accent-foreground: 210 40% 98%;
-    
-    --destructive: 350 85% 60%;
-    --destructive-foreground: 210 40% 98%;
-    
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    
-    --border: 240 15% 85%;
-    --input: 240 15% 90%;
-    --ring: 256 85% 65%;
+    /* Midnight Arcade */
+    --background: 240 22% 6%;
+    --foreground: 240 10% 94%;
 
-    --radius: 1.5rem;
+    --primary: 265 88% 68%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 330 88% 62%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 240 18% 14%;
+    --muted-foreground: 240 12% 55%;
+
+    --accent: 185 80% 52%;
+    --accent-foreground: 240 22% 6%;
+
+    --destructive: 350 85% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --card: 240 20% 10%;
+    --card-foreground: 240 10% 94%;
+
+    --popover: 240 20% 10%;
+    --popover-foreground: 240 10% 94%;
+
+    --border: 265 25% 22%;
+    --input: 240 18% 14%;
+    --ring: 265 88% 68%;
+
+    --radius: 1.25rem;
   }
 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 15%;
-    --card-foreground: 210 40% 98%;
-    --border: 222 47% 25%;
-    --input: 222 47% 25%;
-    --muted: 222 47% 20%;
-    --muted-foreground: 215 20% 65%;
+    --background: 240 22% 6%;
+    --foreground: 240 10% 94%;
+    --card: 240 20% 10%;
+    --card-foreground: 240 10% 94%;
+    --border: 265 25% 22%;
+    --input: 240 18% 14%;
+    --muted: 240 18% 14%;
+    --muted-foreground: 240 12% 55%;
   }
 }
 
@@ -55,10 +58,12 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary;
+    @apply bg-background text-foreground antialiased selection:bg-primary/30 selection:text-primary-foreground;
     font-family: var(--font-sans);
-    background-image: radial-gradient(circle at 100% 100%, rgba(138, 43, 226, 0.05) 0%, transparent 50%),
-                      radial-gradient(circle at 0% 0%, rgba(236, 72, 153, 0.05) 0%, transparent 50%);
+    background-image:
+      radial-gradient(ellipse at 85% 10%, rgba(139, 92, 246, 0.18) 0%, transparent 45%),
+      radial-gradient(ellipse at 15% 85%, rgba(236, 72, 153, 0.14) 0%, transparent 45%),
+      radial-gradient(ellipse at 50% 50%, rgba(0, 0, 30, 0.4) 0%, transparent 70%);
     background-attachment: fixed;
   }
   h1, h2, h3, h4, h5, h6 {
@@ -69,15 +74,34 @@
 
 @layer utilities {
   .btn-bouncy {
-    @apply transition-all duration-200 active:scale-95 hover:-translate-y-1;
-    box-shadow: 0 4px 0 0 rgba(0,0,0,0.1);
+    @apply transition-all duration-150 active:scale-95;
+    box-shadow: 0 5px 0 0 rgba(80, 20, 200, 0.55), 0 0 24px rgba(139, 92, 246, 0.18);
+  }
+  .btn-bouncy:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 7px 0 0 rgba(80, 20, 200, 0.55), 0 0 32px rgba(139, 92, 246, 0.25);
   }
   .btn-bouncy:active {
-    box-shadow: 0 0px 0 0 rgba(0,0,0,0.1);
-    transform: translateY(4px);
+    box-shadow: 0 0 0 0 rgba(80, 20, 200, 0.55), 0 0 24px rgba(139, 92, 246, 0.1);
+    transform: translateY(5px);
   }
-  
+
   .card-playful {
-    @apply bg-card rounded-[2rem] border-4 border-border/50 shadow-lg shadow-black/5 overflow-hidden;
+    @apply bg-card rounded-[1.75rem] border border-border shadow-2xl overflow-hidden;
+    box-shadow:
+      0 0 0 1px hsl(var(--border)),
+      0 24px 64px rgba(0, 0, 0, 0.7),
+      0 0 80px rgba(139, 92, 246, 0.06);
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 24px rgba(139, 92, 246, 0.4), 0 0 60px rgba(139, 92, 246, 0.15);
+  }
+  .glow-secondary {
+    box-shadow: 0 0 24px rgba(236, 72, 153, 0.4), 0 0 60px rgba(236, 72, 153, 0.15);
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent;
   }
 }
