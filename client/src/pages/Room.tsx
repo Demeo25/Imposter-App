@@ -40,36 +40,36 @@ function RevealOverlay({
         className="card-playful p-8 w-full max-w-sm text-center"
         onClick={e => e.stopPropagation()}
       >
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">Secret for</p>
-        <h2 className="text-4xl font-display mb-8">{player.name}</h2>
+        <p className="text-xs font-bold uppercase tracking-widest text-primary/60 mb-1">Secret for</p>
+        <h2 className="text-4xl font-display mb-8 text-gradient">{player.name}</h2>
 
         <div
-          className={`p-8 rounded-3xl border-4 mb-8 ${
+          className={`p-8 rounded-3xl border-2 mb-8 ${
             player.isImposter
-              ? "bg-destructive/10 border-destructive/30"
-              : "bg-primary/10 border-primary/30"
+              ? "bg-secondary/15 border-secondary/60"
+              : "bg-primary/15 border-primary/50"
           }`}
         >
           {player.isImposter ? (
             <>
-              <Ghost className="w-14 h-14 text-destructive mx-auto mb-4" />
-              <div className="text-5xl font-black text-destructive uppercase tracking-tighter">
+              <Ghost className="w-14 h-14 text-secondary mx-auto mb-4" />
+              <div className="text-5xl font-black text-secondary uppercase tracking-tighter">
                 IMPOSTER
               </div>
-              <p className="text-muted-foreground mt-4 font-medium">
+              <p className="text-secondary/70 mt-4 font-medium">
                 Category: {room.currentCategory}
               </p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-secondary/60 mt-1">
                 Blend in. Give a clue that fits!
               </p>
             </>
           ) : (
             <>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">
+              <p className="text-xs font-bold uppercase tracking-widest text-primary/60 mb-2">
                 Category
               </p>
               <p className="text-xl font-bold text-primary mb-6">{room.currentCategory}</p>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">
+              <p className="text-xs font-bold uppercase tracking-widest text-primary/60 mb-2">
                 Your Word
               </p>
               <div className="text-5xl font-display text-primary">{room.currentWord}</div>
@@ -108,14 +108,14 @@ function PhasePlaying({
     <div className="flex flex-col gap-5 w-full">
       {/* Category banner */}
       <div className="card-playful p-6 text-center">
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">
+        <p className="text-xs font-bold uppercase tracking-widest text-primary/60 mb-1">
           Category
         </p>
-        <h2 className="text-4xl font-display text-primary mb-4">{room.currentCategory}</h2>
+        <h2 className="text-4xl font-display text-gradient mb-4">{room.currentCategory}</h2>
         {startingPlayer && (
-          <div className="bg-secondary/10 rounded-xl px-4 py-3 inline-block">
+          <div className="bg-secondary/15 border border-secondary/40 rounded-xl px-4 py-3 inline-block">
             <p className="font-bold text-sm">
-              <span className="text-muted-foreground">Starting player: </span>
+              <span className="text-secondary/70">Starting player: </span>
               <span className="text-foreground">{startingPlayer.name}</span>
             </p>
           </div>
@@ -130,7 +130,7 @@ function PhasePlaying({
         {players.map(p => (
           <div
             key={p.id}
-            className="bg-card border-2 border-border/50 rounded-xl py-3 text-center font-bold text-sm"
+            className="bg-primary/10 border border-primary/30 rounded-xl py-3 text-center font-bold text-sm"
           >
             {p.name}
           </div>
@@ -157,9 +157,9 @@ function PhasePlaying({
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              className="absolute top-full left-0 right-0 mt-2 bg-card border-2 border-border rounded-2xl shadow-xl z-40 overflow-hidden"
+              className="absolute top-full left-0 right-0 mt-2 bg-card border border-primary/40 rounded-2xl shadow-xl z-40 overflow-hidden"
             >
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-4 pt-3 pb-2">
+              <p className="text-xs font-bold uppercase tracking-widest text-primary/60 px-4 pt-3 pb-2">
                 Who needs a reminder?
               </p>
               {players.map(p => (
@@ -355,12 +355,12 @@ export default function Room() {
                 {players.map(p => (
                   <div
                     key={p.id}
-                    className="flex items-center justify-between h-12 bg-muted/40 px-4 rounded-xl border border-border/60"
+                    className="flex items-center justify-between h-12 bg-primary/10 px-4 rounded-xl border border-primary/30"
                   >
                     <span className="font-bold text-sm">{p.name}</span>
                     <button
                       onClick={() => removePlayer.mutate(p.id)}
-                      className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                      className="text-primary/50 hover:text-secondary transition-colors p-1"
                       data-testid={`button-remove-player-${p.id}`}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -368,15 +368,15 @@ export default function Room() {
                   </div>
                 ))}
                 {players.length === 0 && (
-                  <p className="text-center text-muted-foreground py-3 text-sm">
+                  <p className="text-center text-primary/50 py-3 text-sm">
                     Add at least 3 players to start
                   </p>
                 )}
               </div>
 
               {/* Imposter count */}
-              <div className="bg-muted/40 border border-border/60 rounded-xl px-4 py-3">
-                <p className="text-xs font-bold uppercase tracking-widest mb-3 text-center text-muted-foreground">
+              <div className="bg-secondary/10 border border-secondary/30 rounded-xl px-4 py-3">
+                <p className="text-xs font-bold uppercase tracking-widest mb-3 text-center text-secondary/80">
                   Imposters
                 </p>
                 <div className="flex items-center justify-center gap-6">
@@ -399,24 +399,24 @@ export default function Room() {
               </div>
 
               {/* Category selector */}
-              <div className="border border-border/60 rounded-xl overflow-hidden">
+              <div className="border border-primary/40 rounded-xl overflow-hidden">
                 <button
                   onClick={() => setShowCategories(v => !v)}
-                  className="w-full flex items-center justify-between h-12 px-4 bg-muted/40 hover:bg-muted/60 transition-colors"
+                  className="w-full flex items-center justify-between h-12 px-4 bg-primary/10 hover:bg-primary/15 transition-colors"
                   data-testid="button-toggle-categories-panel"
                 >
                   <div className="flex items-center gap-2">
-                    <Settings2 className="w-4 h-4 text-muted-foreground" />
+                    <Settings2 className="w-4 h-4 text-primary/70" />
                     <span className="font-bold text-sm">Categories</span>
                     {categories && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-primary/60">
                         ({getSelectedIds().length}/{categories.length})
                       </span>
                     )}
                   </div>
                   {showCategories
-                    ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                    : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                    ? <ChevronUp className="w-4 h-4 text-primary/70" />
+                    : <ChevronDown className="w-4 h-4 text-primary/70" />}
                 </button>
 
                 <AnimatePresence>
@@ -505,8 +505,8 @@ export default function Room() {
               className="flex flex-col gap-6"
             >
               <div className="text-center">
-                <h2 className="text-3xl font-display mb-1">Secret Reveal</h2>
-                <p className="text-muted-foreground text-sm">
+                <h2 className="text-3xl font-display mb-1 text-gradient">Secret Reveal</h2>
+                <p className="text-primary/50 text-sm">
                   Pass the phone around. Each player taps their own name to see their role.
                 </p>
               </div>
@@ -523,22 +523,22 @@ export default function Room() {
                       whileTap={seen ? {} : { scale: 0.95 }}
                       disabled={seen}
                       data-testid={`button-reveal-${p.id}`}
-                      className={`flex flex-col items-center justify-center py-7 rounded-3xl border-4 font-bold text-xl transition-all
+                      className={`flex flex-col items-center justify-center py-7 rounded-3xl border-2 font-bold text-xl transition-all
                         ${
                           seen
-                            ? "bg-muted border-muted text-muted-foreground opacity-40 cursor-default"
-                            : "bg-primary text-white border-primary shadow-lg cursor-pointer"
+                            ? "bg-muted/20 border-border/30 text-foreground/25 cursor-default"
+                            : "bg-primary text-white border-primary/60 shadow-lg cursor-pointer"
                         }`}
                     >
-                      {seen && <Eye className="w-5 h-5 mb-1 opacity-50" />}
+                      {seen && <Eye className="w-5 h-5 mb-1 opacity-40" />}
                       {p.name}
-                      {seen && <span className="text-xs font-normal mt-1 opacity-60">Done</span>}
+                      {seen && <span className="text-xs font-normal mt-1 opacity-40">Done</span>}
                     </motion.button>
                   );
                 })}
               </div>
 
-              <p className="text-center text-sm text-muted-foreground">
+              <p className="text-center text-sm text-primary/50">
                 {revealedIds.length} / {players.length} players have seen their role
               </p>
 
@@ -548,11 +548,11 @@ export default function Room() {
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="card-playful p-6 text-center border-primary/30 bg-primary/5"
+                    className="card-playful p-6 text-center border-primary/50 bg-primary/10"
                   >
                     <Star className="w-8 h-8 text-primary mx-auto mb-3" />
                     <h3 className="text-2xl font-display mb-1">Everyone's ready!</h3>
-                    <p className="text-muted-foreground text-sm mb-5">
+                    <p className="text-primary/60 text-sm mb-5">
                       Remember your role — don't reveal it to others!
                     </p>
                     <PlayfulButton
@@ -701,14 +701,14 @@ function NewCategorySheet({ onClose }: { onClose: () => void }) {
         className="absolute inset-x-0 bottom-0 top-16 bg-background rounded-t-3xl shadow-2xl flex flex-col overflow-hidden"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border/50 flex-shrink-0">
-          <h2 className="text-2xl font-display">New Category</h2>
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-primary/20 flex-shrink-0">
+          <h2 className="text-2xl font-display text-gradient">New Category</h2>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-muted flex items-center justify-center hover:bg-muted/70 transition-colors"
+            className="w-9 h-9 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors"
             data-testid="button-close-new-category"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4 text-primary" />
           </button>
         </div>
 
@@ -716,7 +716,7 @@ function NewCategorySheet({ onClose }: { onClose: () => void }) {
         <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4">
           {/* Name input */}
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-primary/60 block mb-2">
               Category Name
             </label>
             <Input
@@ -745,7 +745,7 @@ function NewCategorySheet({ onClose }: { onClose: () => void }) {
 
           {/* Add word manually */}
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-primary/60 block mb-2">
               Words ({words.length})
             </label>
             <div className="flex gap-2 mb-3">
@@ -772,12 +772,12 @@ function NewCategorySheet({ onClose }: { onClose: () => void }) {
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.8 }}
-                      className="flex items-center justify-between bg-card border-2 border-border rounded-xl px-3 py-2.5 group"
+                      className="flex items-center justify-between bg-primary/15 border border-primary/40 rounded-xl px-3 py-2.5 group"
                     >
                       <span className="font-medium text-sm truncate">{w}</span>
                       <button
                         onClick={() => setWords(prev => prev.filter(x => x !== w))}
-                        className="text-destructive opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity ml-2 flex-shrink-0"
+                        className="text-secondary opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity ml-2 flex-shrink-0"
                         data-testid={`button-remove-new-word-${w}`}
                       >
                         <X className="w-4 h-4" />
@@ -791,7 +791,7 @@ function NewCategorySheet({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Footer */}
-        <div className="px-4 pb-6 pt-3 border-t border-border/50 flex-shrink-0">
+        <div className="px-4 pb-6 pt-3 border-t border-primary/20 flex-shrink-0">
           <PlayfulButton
             size="lg"
             className="w-full"

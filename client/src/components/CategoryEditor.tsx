@@ -105,17 +105,17 @@ export function CategoryEditor({ category, onClose, onDeleted }: CategoryEditorP
         className="absolute inset-x-0 bottom-0 top-16 bg-background rounded-t-3xl shadow-2xl flex flex-col overflow-hidden"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border/50 flex-shrink-0">
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-primary/20 flex-shrink-0">
           <div>
-            <h2 className="text-2xl font-display">{category.name}</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">{words.length} words</p>
+            <h2 className="text-2xl font-display text-gradient">{category.name}</h2>
+            <p className="text-xs text-primary/50 mt-0.5">{words.length} words</p>
           </div>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-muted flex items-center justify-center hover:bg-muted/70 transition-colors"
+            className="w-9 h-9 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors"
             data-testid="button-close-editor"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4 text-primary" />
           </button>
         </div>
 
@@ -130,12 +130,12 @@ export function CategoryEditor({ category, onClose, onDeleted }: CategoryEditorP
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
-                  className="flex items-center justify-between bg-card border-2 border-border rounded-xl px-3 py-2.5 group"
+                  className="flex items-center justify-between bg-primary/15 border border-primary/40 rounded-xl px-3 py-2.5 group"
                 >
                   <span className="font-medium text-sm truncate">{word}</span>
                   <button
                     onClick={() => removeWord(word)}
-                    className="text-destructive opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity ml-2 flex-shrink-0"
+                    className="text-secondary opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity ml-2 flex-shrink-0"
                     data-testid={`button-remove-word-${word}`}
                   >
                     <X className="w-4 h-4" />
@@ -147,7 +147,7 @@ export function CategoryEditor({ category, onClose, onDeleted }: CategoryEditorP
         </div>
 
         {/* Footer controls */}
-        <div className="px-4 pb-6 pt-3 border-t border-border/50 flex flex-col gap-3 flex-shrink-0">
+        <div className="px-4 pb-6 pt-3 border-t border-primary/20 flex flex-col gap-3 flex-shrink-0">
           {/* Add word input */}
           <div className="flex gap-2">
             <Input
