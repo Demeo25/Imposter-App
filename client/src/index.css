@@ -13,10 +13,10 @@
     --background: 240 22% 6%;
     --foreground: 240 10% 94%;
 
-    --primary: 265 88% 68%;
+    --primary: 267 100% 65%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 330 88% 62%;
+    --secondary: 330 100% 60%;
     --secondary-foreground: 0 0% 100%;
 
     --muted: 240 18% 14%;
@@ -34,9 +34,9 @@
     --popover: 240 20% 10%;
     --popover-foreground: 240 10% 94%;
 
-    --border: 265 25% 22%;
+    --border: 267 30% 24%;
     --input: 240 18% 14%;
-    --ring: 265 88% 68%;
+    --ring: 267 100% 65%;
 
     --radius: 1.25rem;
   }
@@ -46,7 +46,7 @@
     --foreground: 240 10% 94%;
     --card: 240 20% 10%;
     --card-foreground: 240 10% 94%;
-    --border: 265 25% 22%;
+    --border: 267 30% 24%;
     --input: 240 18% 14%;
     --muted: 240 18% 14%;
     --muted-foreground: 240 12% 55%;
@@ -61,8 +61,8 @@
     @apply bg-background text-foreground antialiased selection:bg-primary/30 selection:text-primary-foreground;
     font-family: var(--font-sans);
     background-image:
-      radial-gradient(ellipse at 85% 10%, rgba(139, 92, 246, 0.18) 0%, transparent 45%),
-      radial-gradient(ellipse at 15% 85%, rgba(236, 72, 153, 0.14) 0%, transparent 45%),
+      radial-gradient(ellipse at 85% 10%, rgba(150, 60, 255, 0.22) 0%, transparent 45%),
+      radial-gradient(ellipse at 15% 85%, rgba(255, 30, 120, 0.16) 0%, transparent 45%),
       radial-gradient(ellipse at 50% 50%, rgba(0, 0, 30, 0.4) 0%, transparent 70%);
     background-attachment: fixed;
   }
@@ -75,14 +75,14 @@
 @layer utilities {
   .btn-bouncy {
     @apply transition-all duration-150 active:scale-95;
-    box-shadow: 0 5px 0 0 rgba(80, 20, 200, 0.55), 0 0 24px rgba(139, 92, 246, 0.18);
+    box-shadow: 0 5px 0 0 rgba(100, 10, 220, 0.65), 0 0 28px rgba(150, 60, 255, 0.22);
   }
   .btn-bouncy:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 7px 0 0 rgba(80, 20, 200, 0.55), 0 0 32px rgba(139, 92, 246, 0.25);
+    box-shadow: 0 7px 0 0 rgba(100, 10, 220, 0.65), 0 0 40px rgba(150, 60, 255, 0.35);
   }
   .btn-bouncy:active {
-    box-shadow: 0 0 0 0 rgba(80, 20, 200, 0.55), 0 0 24px rgba(139, 92, 246, 0.1);
+    box-shadow: 0 0 0 0 rgba(100, 10, 220, 0.65), 0 0 24px rgba(150, 60, 255, 0.12);
     transform: translateY(5px);
   }
 
@@ -91,14 +91,14 @@
     box-shadow:
       0 0 0 1px hsl(var(--border)),
       0 24px 64px rgba(0, 0, 0, 0.7),
-      0 0 80px rgba(139, 92, 246, 0.06);
+      0 0 80px rgba(150, 60, 255, 0.08);
   }
 
   .glow-primary {
-    box-shadow: 0 0 24px rgba(139, 92, 246, 0.4), 0 0 60px rgba(139, 92, 246, 0.15);
+    box-shadow: 0 0 24px rgba(150, 60, 255, 0.5), 0 0 60px rgba(150, 60, 255, 0.2);
   }
   .glow-secondary {
-    box-shadow: 0 0 24px rgba(236, 72, 153, 0.4), 0 0 60px rgba(236, 72, 153, 0.15);
+    box-shadow: 0 0 24px rgba(255, 30, 120, 0.5), 0 0 60px rgba(255, 30, 120, 0.2);
   }
 
   .text-gradient {
