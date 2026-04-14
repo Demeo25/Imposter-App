@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useRoom, useStartGame, useNextRound, useRevealPlayer, useEndGame, useCategories, useCreateCategory, useSuggestWords } from "@/hooks/use-game";
+import { useRoom, useStartGame, useNextRound, useRevealPlayer, useEndGame, useCategories, useCreateCategory, useSuggestWords, useProfiles, useAddProfilePlayer } from "@/hooks/use-game";
 import { useSettings } from "@/hooks/use-settings";
 import { CategoryEditor } from "@/components/CategoryEditor";
 import { PlayfulButton } from "@/components/ui/playful-button";
@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { buildUrl, api } from "@shared/routes";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Player, Room, Category } from "@shared/schema";
+import type { Player, Room, Category, Profile } from "@shared/schema";
 
 import { PhaseFinished } from "./phases/PhaseFinished";
 
@@ -221,11 +221,14 @@ export default function Room() {
   const { settings, update: updateSettings } = useSettings();
   const { data: categories } = useCategories();
 
-  const [newName, setNewName] = useState("");
   const [imposterCount, setImposterCount] = useState(1);
   const [showCategories, setShowCategories] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [creatingCategory, setCreatingCategory] = useState(false);
+  const [addPlayerSheetOpen, setAddPlayerSheetOpen] = useState(false);
+
+  const { data: profiles = [] } = useProfiles();
+  const addProfilePlayer = useAddProfilePlayer(code || "");
 
   const getSelectedIds = () => {
     if (!categories) return [];
@@ -241,30 +244,16 @@ export default function Room() {
     updateSettings({ selectedCategoryIds: updated });
   };
 
+  // Sync imposterCount from room when room first loads
+  useEffect(() => {
+    if (data?.room) {
+      setImposterCount(data.room.imposterCount || 1);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.room?.id]);
+
   // Which player is currently showing their secret overlay in the reveal phase
   const [revealingPlayer, setRevealingPlayer] = useState<Player | null>(null);
-
-  const addPlayer = useMutation({
-    mutationFn: async (name: string) => {
-      const res = await fetch(buildUrl(api.rooms.addPlayer.path, { code: code! }), {
-        method: api.rooms.addPlayer.method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to add player");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      setNewName("");
-      queryClient.invalidateQueries({ queryKey: ["room", code] });
-    },
-    onError: (err: any) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    },
-  });
 
   const removePlayer = useMutation({
     mutationFn: async (playerId: number) => {
@@ -327,31 +316,8 @@ export default function Room() {
                 <h1 className="text-3xl font-display flex-1 text-center pr-10 text-gradient">Party Setup</h1>
               </div>
 
-              {/* Add player row */}
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Player name..."
-                  value={newName}
-                  onChange={e => setNewName(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === "Enter" && newName.trim()) addPlayer.mutate(newName.trim());
-                  }}
-                  className="h-12 bg-muted/60 border-border focus:border-primary rounded-xl"
-                  data-testid="input-player-name"
-                />
-                <PlayfulButton
-                  size="sm"
-                  onClick={() => { if (newName.trim()) addPlayer.mutate(newName.trim()); }}
-                  disabled={!newName.trim() || addPlayer.isPending}
-                  className="h-12 px-4 shrink-0"
-                  data-testid="button-add-player"
-                >
-                  <UserPlus className="w-5 h-5" />
-                </PlayfulButton>
-              </div>
-
               {/* Player list */}
-              <div className="flex flex-col gap-1.5 max-h-[32vh] overflow-y-auto">
+              <div className="flex flex-col gap-1.5 max-h-[30vh] overflow-y-auto">
                 {players.map(p => (
                   <div
                     key={p.id}
@@ -369,10 +335,22 @@ export default function Room() {
                 ))}
                 {players.length === 0 && (
                   <p className="text-center text-primary/50 py-3 text-sm">
-                    Add at least 3 players to start
+                    No players — go back to add some
                   </p>
                 )}
               </div>
+
+              {/* Add more players button */}
+              {profiles.some(p => !players.find(pl => pl.profileId === p.id)) && (
+                <button
+                  onClick={() => setAddPlayerSheetOpen(true)}
+                  className="flex items-center justify-center gap-2 h-11 w-full rounded-xl border border-dashed border-primary/40 text-primary/70 hover:text-primary hover:bg-primary/8 transition-colors text-sm font-medium"
+                  data-testid="button-add-player"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Add Player
+                </button>
+              )}
 
               {/* Imposter count */}
               <div className="bg-secondary/10 border border-secondary/30 rounded-xl px-4 py-3">
@@ -599,6 +577,7 @@ export default function Room() {
                 room={room}
                 players={players}
                 onPlayAgain={() => nextRound.mutate()}
+                onEndGame={() => setLocation('/')}
               />
             </motion.div>
           )}
@@ -633,7 +612,96 @@ export default function Room() {
           <NewCategorySheet onClose={() => setCreatingCategory(false)} />
         )}
       </AnimatePresence>
+
+      {/* Add player from profile sheet */}
+      <AnimatePresence>
+        {addPlayerSheetOpen && (
+          <AddPlayerSheet
+            profiles={profiles}
+            currentPlayers={data?.players || []}
+            onAdd={async (profileId) => {
+              await addProfilePlayer.mutateAsync(profileId);
+              setAddPlayerSheetOpen(false);
+            }}
+            onClose={() => setAddPlayerSheetOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+// ─── Add Player from profile sheet ───────────────────────────────────────────
+function AddPlayerSheet({
+  profiles,
+  currentPlayers,
+  onAdd,
+  onClose,
+}: {
+  profiles: Profile[];
+  currentPlayers: Player[];
+  onAdd: (profileId: number) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [adding, setAdding] = useState<number | null>(null);
+  const availableProfiles = profiles.filter(
+    p => !currentPlayers.some(pl => pl.profileId === p.id)
+  );
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col"
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ type: "spring", damping: 26, stiffness: 300 }}
+        className="absolute inset-x-0 bottom-0 bg-background rounded-t-3xl shadow-2xl flex flex-col overflow-hidden max-h-[70vh]"
+      >
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-primary/20 flex-shrink-0">
+          <h2 className="text-2xl font-display text-gradient">Add Player</h2>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors"
+          >
+            <X className="w-4 h-4 text-primary" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-2">
+          {availableProfiles.length === 0 ? (
+            <p className="text-center text-primary/50 py-4 text-sm">
+              All profiles are already in the game
+            </p>
+          ) : (
+            availableProfiles.map(profile => (
+              <button
+                key={profile.id}
+                onClick={async () => {
+                  setAdding(profile.id);
+                  await onAdd(profile.id);
+                  setAdding(null);
+                }}
+                disabled={adding !== null}
+                className="flex items-center gap-3 h-14 px-4 bg-primary/10 border border-primary/30 rounded-xl hover:bg-primary/20 transition-colors text-left"
+                data-testid={`button-add-profile-player-${profile.id}`}
+              >
+                {adding === profile.id ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                ) : (
+                  <UserPlus className="w-4 h-4 text-primary" />
+                )}
+                <span className="font-bold text-sm">{profile.name}</span>
+              </button>
+            ))
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 

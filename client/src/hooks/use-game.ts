@@ -1,9 +1,64 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, buildUrl, type CreateRoomInput, type CreateCategoryInput, type RevealPlayerInput } from "@shared/routes";
+import { api, buildUrl, type CreateCategoryInput, type RevealPlayerInput } from "@shared/routes";
+import type { Profile } from "@shared/schema";
 
-// ============================================
-// ROOM QUERIES
-// ============================================
+// ── Profiles ──────────────────────────────────────────────────────────────────
+
+export function useProfiles() {
+  return useQuery({
+    queryKey: ['profiles'],
+    queryFn: async () => {
+      const res = await fetch('/api/profiles');
+      if (!res.ok) throw new Error('Failed to fetch profiles');
+      return res.json() as Promise<Profile[]>;
+    },
+  });
+}
+
+export function useCreateProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const res = await fetch('/api/profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
+      return res.json() as Promise<Profile>;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['profiles'] }),
+  });
+}
+
+export function useRenameProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, name }: { id: number; name: string }) => {
+      const res = await fetch(`/api/profiles/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
+      return res.json() as Promise<Profile>;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['profiles'] }),
+  });
+}
+
+export function useDeleteProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/profiles/${id}`, { method: 'DELETE' });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['profiles'] }),
+  });
+}
+
+// ── Room queries ───────────────────────────────────────────────────────────────
 
 export function useRoom(code: string | undefined) {
   return useQuery({
@@ -34,9 +89,7 @@ export function useCategories() {
   });
 }
 
-// ============================================
-// CATEGORY MUTATIONS
-// ============================================
+// ── Category mutations ─────────────────────────────────────────────────────────
 
 export function useCreateCategory() {
   const queryClient = useQueryClient();
@@ -47,10 +100,7 @@ export function useCreateCategory() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || 'Failed to create category');
-      }
+      if (!res.ok) { const error = await res.json(); throw new Error(error.message || 'Failed to create category'); }
       return api.categories.create.responses[201].parse(await res.json());
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories'] }),
@@ -66,10 +116,7 @@ export function useUpdateCategory() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ words }),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || 'Failed to update category');
-      }
+      if (!res.ok) { const err = await res.json(); throw new Error(err.message || 'Failed to update category'); }
       return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories'] }),
@@ -81,10 +128,7 @@ export function useDeleteCategory() {
   return useMutation({
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || 'Failed to delete category');
-      }
+      if (!res.ok) { const err = await res.json(); throw new Error(err.message || 'Failed to delete category'); }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories'] }),
   });
@@ -98,31 +142,23 @@ export function useSuggestWords() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || 'AI suggestions unavailable');
-      }
+      if (!res.ok) { const err = await res.json(); throw new Error(err.message || 'AI suggestions unavailable'); }
       return res.json() as Promise<{ words: string[] }>;
     },
   });
 }
 
-// ============================================
-// LOBBY MUTATIONS
-// ============================================
+// ── Room mutations ─────────────────────────────────────────────────────────────
 
 export function useCreateRoom() {
   return useMutation({
-    mutationFn: async (data: CreateRoomInput) => {
+    mutationFn: async (data: { profileIds: number[]; selectedCategoryIds?: number[]; imposterCount?: number }) => {
       const res = await fetch(api.rooms.create.path, {
         method: api.rooms.create.method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || 'Failed to create room');
-      }
+      if (!res.ok) { const error = await res.json(); throw new Error(error.message || 'Failed to create room'); }
       return api.rooms.create.responses[201].parse(await res.json());
     },
   });
@@ -138,10 +174,7 @@ export function useStartGame(code: string) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body || {}),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || 'Failed to start game');
-      }
+      if (!res.ok) { const err = await res.json(); throw new Error(err.message || 'Failed to start game'); }
       return api.rooms.start.responses[200].parse(await res.json());
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['room', code] }),
@@ -160,6 +193,23 @@ export function useRevealPlayer(code: string) {
       });
       if (!res.ok) throw new Error('Failed to mark player as revealed');
       return api.rooms.revealPlayer.responses[200].parse(await res.json());
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['room', code] }),
+  });
+}
+
+export function useAddProfilePlayer(code: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (profileId: number) => {
+      const url = buildUrl(api.rooms.addPlayer.path, { code });
+      const res = await fetch(url, {
+        method: api.rooms.addPlayer.method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profileId }),
+      });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.message); }
+      return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['room', code] }),
   });
@@ -205,5 +255,25 @@ export function useNextRound(code: string) {
       return api.rooms.next.responses[200].parse(await res.json());
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['room', code] }),
+  });
+}
+
+export function useResolveGame(code: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      imposterResults: { profileId: number; result: 'win' | 'loss' }[];
+      badWordProfileIds: number[];
+    }) => {
+      const url = buildUrl(api.rooms.resolve.path, { code });
+      const res = await fetch(url, {
+        method: api.rooms.resolve.method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error('Failed to resolve game');
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['profiles'] }),
   });
 }

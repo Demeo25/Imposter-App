@@ -1,26 +1,37 @@
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import {
-  rooms, players, clues, categories,
-  type Room, type Player, type Clue, type Category,
-  type InsertRoom, type InsertPlayer, type InsertClue, type InsertCategory
+  rooms, players, clues, categories, profiles,
+  type Room, type Player, type Clue, type Category, type Profile,
+  type InsertRoom, type InsertPlayer, type InsertClue, type InsertCategory, type InsertProfile,
 } from "@shared/schema";
 
 export interface IStorage {
+  // Profiles
+  getProfiles(): Promise<Profile[]>;
+  getProfile(id: number): Promise<Profile | undefined>;
+  createProfile(data: { name: string }): Promise<Profile>;
+  updateProfile(id: number, updates: Partial<InsertProfile>): Promise<Profile>;
+  deleteProfile(id: number): Promise<void>;
+
+  // Rooms
   createRoom(insertRoom: InsertRoom): Promise<Room>;
   getRoomByCode(code: string): Promise<Room | undefined>;
   updateRoom(id: number, updates: Partial<InsertRoom>): Promise<Room>;
 
+  // Players
   createPlayer(insertPlayer: InsertPlayer): Promise<Player>;
   getPlayer(id: number): Promise<Player | undefined>;
   getPlayersByRoom(roomId: number): Promise<Player[]>;
   updatePlayer(id: number, updates: Partial<InsertPlayer>): Promise<Player>;
   deletePlayer(id: number): Promise<void>;
 
+  // Clues
   createClue(insertClue: InsertClue): Promise<Clue>;
   getCluesByRoom(roomId: number): Promise<Clue[]>;
   clearCluesByRoom(roomId: number): Promise<void>;
 
+  // Categories
   getCategories(): Promise<Category[]>;
   createCategory(insertCategory: InsertCategory): Promise<Category>;
   getCategoryById(id: number): Promise<Category | undefined>;
@@ -29,6 +40,33 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // ── Profiles ──────────────────────────────────────────────────────────────
+
+  async getProfiles(): Promise<Profile[]> {
+    return await db.select().from(profiles).orderBy(profiles.name);
+  }
+
+  async getProfile(id: number): Promise<Profile | undefined> {
+    const [profile] = await db.select().from(profiles).where(eq(profiles.id, id));
+    return profile;
+  }
+
+  async createProfile(data: { name: string }): Promise<Profile> {
+    const [profile] = await db.insert(profiles).values({ name: data.name }).returning();
+    return profile;
+  }
+
+  async updateProfile(id: number, updates: Partial<InsertProfile>): Promise<Profile> {
+    const [profile] = await db.update(profiles).set(updates).where(eq(profiles.id, id)).returning();
+    return profile;
+  }
+
+  async deleteProfile(id: number): Promise<void> {
+    await db.delete(profiles).where(eq(profiles.id, id));
+  }
+
+  // ── Rooms ─────────────────────────────────────────────────────────────────
+
   async createRoom(insertRoom: InsertRoom): Promise<Room> {
     const [room] = await db.insert(rooms).values(insertRoom).returning();
     return room;
@@ -40,12 +78,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateRoom(id: number, updates: Partial<InsertRoom>): Promise<Room> {
-    const [room] = await db.update(rooms)
-      .set(updates)
-      .where(eq(rooms.id, id))
-      .returning();
+    const [room] = await db.update(rooms).set(updates).where(eq(rooms.id, id)).returning();
     return room;
   }
+
+  // ── Players ───────────────────────────────────────────────────────────────
 
   async createPlayer(insertPlayer: InsertPlayer): Promise<Player> {
     const [player] = await db.insert(players).values(insertPlayer).returning();
@@ -62,16 +99,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updatePlayer(id: number, updates: Partial<InsertPlayer>): Promise<Player> {
-    const [player] = await db.update(players)
-      .set(updates)
-      .where(eq(players.id, id))
-      .returning();
+    const [player] = await db.update(players).set(updates).where(eq(players.id, id)).returning();
     return player;
   }
 
   async deletePlayer(id: number): Promise<void> {
     await db.delete(players).where(eq(players.id, id));
   }
+
+  // ── Clues ─────────────────────────────────────────────────────────────────
 
   async createClue(insertClue: InsertClue): Promise<Clue> {
     const [clue] = await db.insert(clues).values(insertClue).returning();
@@ -85,6 +121,8 @@ export class DatabaseStorage implements IStorage {
   async clearCluesByRoom(roomId: number): Promise<void> {
     await db.delete(clues).where(eq(clues.roomId, roomId));
   }
+
+  // ── Categories ────────────────────────────────────────────────────────────
 
   async getCategories(): Promise<Category[]> {
     return await db.select().from(categories);
@@ -101,10 +139,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateCategory(id: number, updates: { words: string[] }): Promise<Category> {
-    const [category] = await db.update(categories)
-      .set(updates)
-      .where(eq(categories.id, id))
-      .returning();
+    const [category] = await db.update(categories).set(updates).where(eq(categories.id, id)).returning();
     return category;
   }
 
