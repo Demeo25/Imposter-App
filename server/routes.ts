@@ -204,13 +204,15 @@ export async function registerRoutes(
       return res.status(400).json({ message: "Not enough players" });
     }
 
-    // Parse optional body params (selectedCategoryIds and hiddenWords)
+    // Parse optional body params (selectedCategoryIds, hiddenWords, imposterCount)
     const body = req.body || {};
     const bodySelectedIds: number[] | undefined = Array.isArray(body.selectedCategoryIds) ? body.selectedCategoryIds : undefined;
     const hiddenWords: Record<string, string[]> = body.hiddenWords || {};
 
     // Assign imposters
-    const imposterCount = room.imposterCount || 1;
+    const imposterCount = (typeof body.imposterCount === 'number' && body.imposterCount >= 1)
+      ? body.imposterCount
+      : room.imposterCount || 1;
     const imposterIndices = new Set<number>();
     while (imposterIndices.size < Math.min(imposterCount, players.length - 1)) {
       imposterIndices.add(Math.floor(Math.random() * players.length));

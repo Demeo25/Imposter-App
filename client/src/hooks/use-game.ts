@@ -131,7 +131,7 @@ export function useCreateRoom() {
 export function useStartGame(code: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (body?: { selectedCategoryIds?: number[]; hiddenWords?: Record<string, string[]> }) => {
+    mutationFn: async (body?: { selectedCategoryIds?: number[]; hiddenWords?: Record<string, string[]>; imposterCount?: number }) => {
       const url = buildUrl(api.rooms.start.path, { code });
       const res = await fetch(url, {
         method: api.rooms.start.method,

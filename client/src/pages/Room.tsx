@@ -481,6 +481,7 @@ export default function Room() {
                 onClick={() => startGame.mutate({
                   selectedCategoryIds: settings.selectedCategoryIds || undefined,
                   hiddenWords: settings.hiddenWords,
+                  imposterCount,
                 })}
                 disabled={players.length < 3 || startGame.isPending || getSelectedIds().length === 0}
                 data-testid="button-start-game"
