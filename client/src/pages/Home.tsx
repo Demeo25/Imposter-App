@@ -63,9 +63,6 @@ function StatCard({ profile, onClose }: { profile: Profile; onClose: () => void 
           </div>
         </div>
 
-        <PlayfulButton className="w-full" onClick={onClose} data-testid="button-close-stat-card-bottom">
-          Close
-        </PlayfulButton>
       </motion.div>
     </motion.div>
   );
