@@ -5,8 +5,15 @@ import { z } from "zod";
 
 // === TABLE DEFINITIONS ===
 
+export const groups = pgTable("groups", {
+  id: serial("id").primaryKey(),
+  code: varchar("code", { length: 8 }).notNull().unique(),
+  name: text("name"),
+});
+
 export const profiles = pgTable("profiles", {
   id: serial("id").primaryKey(),
+  groupId: integer("group_id"),
   name: text("name").notNull(),
   imposterWins: integer("imposter_wins").notNull().default(0),
   imposterLosses: integer("imposter_losses").notNull().default(0),
@@ -17,6 +24,7 @@ export const profiles = pgTable("profiles", {
 
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
+  groupId: integer("group_id"),
   name: text("name").notNull(),
   words: text("words").array().notNull(),
   isCustom: boolean("is_custom").notNull().default(false),
@@ -62,12 +70,19 @@ export const clues = pgTable("clues", {
 
 // === RELATIONS ===
 
-export const profilesRelations = relations(profiles, ({ many }) => ({
-  players: many(players),
+export const groupsRelations = relations(groups, ({ many }) => ({
+  profiles: many(profiles),
+  categories: many(categories),
 }));
 
-export const categoriesRelations = relations(categories, ({ many }) => ({
+export const profilesRelations = relations(profiles, ({ many, one }) => ({
+  players: many(players),
+  group: one(groups, { fields: [profiles.groupId], references: [groups.id] }),
+}));
+
+export const categoriesRelations = relations(categories, ({ many, one }) => ({
   rooms: many(rooms),
+  group: one(groups, { fields: [categories.groupId], references: [groups.id] }),
 }));
 
 export const roomsRelations = relations(rooms, ({ many }) => ({
@@ -86,6 +101,7 @@ export const cluesRelations = relations(clues, ({ one }) => ({
 }));
 
 // === BASE SCHEMAS ===
+export const insertGroupSchema = createInsertSchema(groups).omit({ id: true });
 export const insertProfileSchema = createInsertSchema(profiles).omit({ id: true });
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true });
 export const insertRoomSchema = createInsertSchema(rooms).omit({ id: true, createdAt: true });
@@ -93,6 +109,7 @@ export const insertPlayerSchema = createInsertSchema(players).omit({ id: true })
 export const insertClueSchema = createInsertSchema(clues).omit({ id: true, createdAt: true });
 
 // === TYPES ===
+export type Group = typeof groups.$inferSelect;
 export type Profile = typeof profiles.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type Room = typeof rooms.$inferSelect;

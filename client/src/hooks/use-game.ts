@@ -1,14 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl, type CreateCategoryInput, type RevealPlayerInput } from "@shared/routes";
 import type { Profile } from "@shared/schema";
+import { useGroup } from "@/context/GroupContext";
 
 // ── Profiles ──────────────────────────────────────────────────────────────────
 
 export function useProfiles() {
+  const { groupCode } = useGroup();
   return useQuery({
-    queryKey: ['profiles'],
+    queryKey: ['profiles', groupCode],
     queryFn: async () => {
-      const res = await fetch('/api/profiles');
+      const url = groupCode ? `/api/profiles?groupCode=${groupCode}` : '/api/profiles';
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch profiles');
       return res.json() as Promise<Profile[]>;
     },
@@ -17,12 +20,13 @@ export function useProfiles() {
 
 export function useCreateProfile() {
   const queryClient = useQueryClient();
+  const { groupCode } = useGroup();
   return useMutation({
     mutationFn: async (name: string) => {
       const res = await fetch('/api/profiles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, groupCode }),
       });
       if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
       return res.json() as Promise<Profile>;
@@ -79,10 +83,14 @@ export function useRoom(code: string | undefined) {
 }
 
 export function useCategories() {
+  const { groupCode } = useGroup();
   return useQuery({
-    queryKey: ['categories'],
+    queryKey: ['categories', groupCode],
     queryFn: async () => {
-      const res = await fetch(api.categories.list.path);
+      const url = groupCode
+        ? `${api.categories.list.path}?groupCode=${groupCode}`
+        : api.categories.list.path;
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch categories');
       return api.categories.list.responses[200].parse(await res.json());
     },
@@ -93,12 +101,13 @@ export function useCategories() {
 
 export function useCreateCategory() {
   const queryClient = useQueryClient();
+  const { groupCode } = useGroup();
   return useMutation({
     mutationFn: async (data: CreateCategoryInput) => {
       const res = await fetch(api.categories.create.path, {
         method: api.categories.create.method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, groupCode }),
       });
       if (!res.ok) { const error = await res.json(); throw new Error(error.message || 'Failed to create category'); }
       return api.categories.create.responses[201].parse(await res.json());

@@ -1,16 +1,20 @@
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import {
-  rooms, players, clues, categories, profiles,
-  type Room, type Player, type Clue, type Category, type Profile,
+  rooms, players, clues, categories, profiles, groups,
+  type Room, type Player, type Clue, type Category, type Profile, type Group,
   type InsertRoom, type InsertPlayer, type InsertClue, type InsertCategory, type InsertProfile,
 } from "@shared/schema";
 
 export interface IStorage {
+  // Groups
+  getGroupByCode(code: string): Promise<Group | undefined>;
+  createGroup(data: { code: string; name?: string }): Promise<Group>;
+
   // Profiles
-  getProfiles(): Promise<Profile[]>;
+  getProfiles(groupId?: number | null): Promise<Profile[]>;
   getProfile(id: number): Promise<Profile | undefined>;
-  createProfile(data: { name: string }): Promise<Profile>;
+  createProfile(data: { name: string; groupId?: number | null }): Promise<Profile>;
   updateProfile(id: number, updates: Partial<InsertProfile>): Promise<Profile>;
   deleteProfile(id: number): Promise<void>;
 
@@ -32,7 +36,7 @@ export interface IStorage {
   clearCluesByRoom(roomId: number): Promise<void>;
 
   // Categories
-  getCategories(): Promise<Category[]>;
+  getCategories(groupId?: number | null): Promise<Category[]>;
   createCategory(insertCategory: InsertCategory): Promise<Category>;
   getCategoryById(id: number): Promise<Category | undefined>;
   updateCategory(id: number, updates: { words: string[] }): Promise<Category>;
@@ -40,10 +44,26 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // ── Groups ────────────────────────────────────────────────────────────────
+
+  async getGroupByCode(code: string): Promise<Group | undefined> {
+    const [group] = await db.select().from(groups).where(eq(groups.code, code.toUpperCase()));
+    return group;
+  }
+
+  async createGroup(data: { code: string; name?: string }): Promise<Group> {
+    const [group] = await db.insert(groups).values({ code: data.code.toUpperCase(), name: data.name ?? null }).returning();
+    return group;
+  }
+
   // ── Profiles ──────────────────────────────────────────────────────────────
 
-  async getProfiles(): Promise<Profile[]> {
-    return await db.select().from(profiles).orderBy(profiles.name);
+  async getProfiles(groupId?: number | null): Promise<Profile[]> {
+    if (groupId === undefined || groupId === null) {
+      // Return profiles with no group (legacy local)
+      return await db.select().from(profiles).where(isNull(profiles.groupId)).orderBy(profiles.name);
+    }
+    return await db.select().from(profiles).where(eq(profiles.groupId, groupId)).orderBy(profiles.name);
   }
 
   async getProfile(id: number): Promise<Profile | undefined> {
@@ -51,8 +71,8 @@ export class DatabaseStorage implements IStorage {
     return profile;
   }
 
-  async createProfile(data: { name: string }): Promise<Profile> {
-    const [profile] = await db.insert(profiles).values({ name: data.name }).returning();
+  async createProfile(data: { name: string; groupId?: number | null }): Promise<Profile> {
+    const [profile] = await db.insert(profiles).values({ name: data.name, groupId: data.groupId ?? null }).returning();
     return profile;
   }
 
@@ -124,8 +144,22 @@ export class DatabaseStorage implements IStorage {
 
   // ── Categories ────────────────────────────────────────────────────────────
 
-  async getCategories(): Promise<Category[]> {
-    return await db.select().from(categories);
+  async getCategories(groupId?: number | null): Promise<Category[]> {
+    // Always return global (non-custom) categories
+    const globalCats = await db.select().from(categories).where(eq(categories.isCustom, false));
+    // Return custom categories scoped to the group (or ungrouped if no group)
+    let customCats: Category[];
+    if (groupId) {
+      customCats = await db.select().from(categories)
+        .where(eq(categories.groupId, groupId));
+      // Filter to only custom ones for this group
+      customCats = customCats.filter(c => c.isCustom);
+    } else {
+      // Local/ungrouped custom categories (groupId IS NULL)
+      const allCustom = await db.select().from(categories).where(eq(categories.isCustom, true));
+      customCats = allCustom.filter(c => c.groupId === null);
+    }
+    return [...globalCats, ...customCats];
   }
 
   async createCategory(insertCategory: InsertCategory): Promise<Category> {

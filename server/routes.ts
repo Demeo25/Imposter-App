@@ -33,19 +33,51 @@ async function initializeDefaultCategories() {
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   await initializeDefaultCategories();
 
+  // ========== GROUPS ==========
+
+  function generateGroupCode() {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // no I/O to avoid confusion
+    let code = "";
+    for (let i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+    return code;
+  }
+
+  app.post("/api/groups", async (req, res) => {
+    const { name } = req.body;
+    let code = generateGroupCode();
+    // Ensure uniqueness
+    while (await storage.getGroupByCode(code)) code = generateGroupCode();
+    const group = await storage.createGroup({ code, name: name?.trim() || undefined });
+    res.status(201).json(group);
+  });
+
+  app.get("/api/groups/:code", async (req, res) => {
+    const group = await storage.getGroupByCode(req.params.code);
+    if (!group) return res.status(404).json({ message: "Group not found" });
+    res.status(200).json(group);
+  });
+
   // ========== PROFILES ==========
 
-  app.get("/api/profiles", async (_req, res) => {
-    const list = await storage.getProfiles();
+  async function resolveGroupId(groupCode?: string): Promise<number | null> {
+    if (!groupCode) return null;
+    const group = await storage.getGroupByCode(groupCode);
+    return group?.id ?? null;
+  }
+
+  app.get("/api/profiles", async (req, res) => {
+    const groupId = await resolveGroupId(req.query.groupCode as string | undefined);
+    const list = await storage.getProfiles(groupId);
     res.status(200).json(list);
   });
 
   app.post("/api/profiles", async (req, res) => {
-    const { name } = req.body;
+    const { name, groupCode } = req.body;
     if (!name || typeof name !== "string" || !name.trim()) {
       return res.status(400).json({ message: "Name is required" });
     }
-    const profile = await storage.createProfile({ name: name.trim() });
+    const groupId = await resolveGroupId(groupCode);
+    const profile = await storage.createProfile({ name: name.trim(), groupId });
     res.status(201).json(profile);
   });
 
@@ -71,8 +103,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ========== CATEGORIES ==========
 
-  app.get(api.categories.list.path, async (_req, res) => {
-    const cats = await storage.getCategories();
+  app.get(api.categories.list.path, async (req, res) => {
+    const groupId = await resolveGroupId(req.query.groupCode as string | undefined);
+    const cats = await storage.getCategories(groupId);
     res.status(200).json(cats);
   });
 
@@ -129,7 +162,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post(api.categories.create.path, async (req, res) => {
     try {
       const input = api.categories.create.input.parse(req.body);
-      const cat = await storage.createCategory({ name: input.name, words: input.words, isCustom: true });
+      const groupId = await resolveGroupId((req.body as any).groupCode);
+      const cat = await storage.createCategory({ name: input.name, words: input.words, isCustom: true, groupId });
       res.status(201).json(cat);
     } catch (err) {
       if (err instanceof z.ZodError) {

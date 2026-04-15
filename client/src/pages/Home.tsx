@@ -4,8 +4,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useProfiles, useCreateProfile, useDeleteProfile, useRenameProfile, useCreateRoom } from "@/hooks/use-game";
 import { PlayfulButton } from "@/components/ui/playful-button";
 import { Input } from "@/components/ui/input";
-import { Ghost, UserPlus, Trash2, Check, X, BarChart2, Pencil } from "lucide-react";
+import { Ghost, UserPlus, Trash2, Check, X, BarChart2, Pencil, Users, Link2, LogOut, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useGroup } from "@/context/GroupContext";
 import type { Profile } from "@shared/schema";
 
 // ── Stat Card Overlay ──────────────────────────────────────────────────────────
@@ -68,10 +69,171 @@ function StatCard({ profile, onClose }: { profile: Profile; onClose: () => void 
   );
 }
 
+// ── Group Sheet ─────────────────────────────────────────────────────────────────
+function GroupSheet({ onClose }: { onClose: () => void }) {
+  const { group, groupCode, isLoading, joinGroup, createGroup, leaveGroup, error, clearError } = useGroup();
+  const { toast } = useToast();
+  const [tab, setTab] = useState<"join" | "create">("join");
+  const [joinCode, setJoinCode] = useState("");
+  const [groupName, setGroupName] = useState("");
+
+  const handleJoin = async () => {
+    if (!joinCode.trim()) return;
+    await joinGroup(joinCode.trim());
+  };
+
+  const handleCreate = async () => {
+    await createGroup(groupName.trim() || undefined);
+  };
+
+  const handleCopyCode = () => {
+    if (groupCode) {
+      navigator.clipboard.writeText(groupCode);
+      toast({ title: "Copied!", description: `Group code ${groupCode} copied to clipboard.` });
+    }
+  };
+
+  const handleLeave = () => {
+    leaveGroup();
+    onClose();
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-end justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: 80, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 80, opacity: 0 }}
+        transition={{ type: "spring", damping: 22 }}
+        className="card-playful p-6 w-full max-w-md mb-2"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-2xl font-display text-gradient flex items-center gap-2">
+            <Users className="w-5 h-5" /> Sync Group
+          </h2>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors"
+            data-testid="button-close-group-sheet"
+          >
+            <X className="w-4 h-4 text-primary" />
+          </button>
+        </div>
+
+        <p className="text-sm text-muted-foreground mb-5 leading-relaxed">
+          Share a group code with friends so all your devices use the same player profiles and custom categories.
+        </p>
+
+        {group ? (
+          /* ── Already in a group ── */
+          <div className="flex flex-col gap-4">
+            <div className="bg-primary/10 border border-primary/30 rounded-2xl p-4 text-center">
+              <p className="text-xs text-primary/60 uppercase tracking-widest mb-1">
+                {group.name ? group.name : "Your Group"}
+              </p>
+              <p className="text-4xl font-display text-gradient tracking-widest" data-testid="text-group-code">
+                {group.code}
+              </p>
+            </div>
+            <PlayfulButton
+              variant="outline"
+              className="w-full gap-2"
+              onClick={handleCopyCode}
+              data-testid="button-copy-group-code"
+            >
+              <Copy className="w-4 h-4" /> Copy Code
+            </PlayfulButton>
+            <button
+              onClick={handleLeave}
+              className="flex items-center justify-center gap-2 text-sm text-secondary/70 hover:text-secondary transition-colors py-2"
+              data-testid="button-leave-group"
+            >
+              <LogOut className="w-4 h-4" /> Leave group
+            </button>
+          </div>
+        ) : (
+          /* ── Join / Create tabs ── */
+          <div>
+            <div className="flex bg-muted/40 rounded-xl p-1 mb-4">
+              {(["join", "create"] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => { setTab(t); clearError(); }}
+                  className={`flex-1 py-2 rounded-lg text-sm font-bold transition-colors capitalize ${
+                    tab === t ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  data-testid={`button-group-tab-${t}`}
+                >
+                  {t === "join" ? "Join Group" : "Create Group"}
+                </button>
+              ))}
+            </div>
+
+            {error && (
+              <p className="text-sm text-secondary mb-3 text-center" data-testid="text-group-error">{error}</p>
+            )}
+
+            {tab === "join" ? (
+              <div className="flex flex-col gap-3">
+                <Input
+                  placeholder="Enter group code (e.g. ABCDEF)"
+                  value={joinCode}
+                  onChange={e => { setJoinCode(e.target.value.toUpperCase()); clearError(); }}
+                  onKeyDown={e => { if (e.key === "Enter") handleJoin(); }}
+                  className="h-12 bg-muted/60 border-border focus:border-primary rounded-xl text-center text-xl font-display tracking-widest uppercase"
+                  maxLength={6}
+                  data-testid="input-join-code"
+                />
+                <PlayfulButton
+                  className="w-full gap-2"
+                  onClick={handleJoin}
+                  disabled={joinCode.trim().length < 6 || isLoading}
+                  data-testid="button-join-group"
+                >
+                  <Link2 className="w-4 h-4" />
+                  {isLoading ? "Joining..." : "Join Group"}
+                </PlayfulButton>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <Input
+                  placeholder="Group name (optional)"
+                  value={groupName}
+                  onChange={e => { setGroupName(e.target.value); clearError(); }}
+                  onKeyDown={e => { if (e.key === "Enter") handleCreate(); }}
+                  className="h-12 bg-muted/60 border-border focus:border-primary rounded-xl"
+                  data-testid="input-group-name"
+                />
+                <PlayfulButton
+                  className="w-full gap-2"
+                  onClick={handleCreate}
+                  disabled={isLoading}
+                  data-testid="button-create-group"
+                >
+                  <Users className="w-4 h-4" />
+                  {isLoading ? "Creating..." : "Create Group"}
+                </PlayfulButton>
+              </div>
+            )}
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ── Main Home Page ─────────────────────────────────────────────────────────────
 export default function Home() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { group } = useGroup();
 
   const { data: profiles = [], isLoading } = useProfiles();
   const createProfile = useCreateProfile();
@@ -85,6 +247,7 @@ export default function Home() {
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [viewingProfile, setViewingProfile] = useState<Profile | null>(null);
+  const [showGroupSheet, setShowGroupSheet] = useState(false);
 
   const toggleProfile = (id: number) => {
     setSelectedIds(prev =>
@@ -168,6 +331,27 @@ export default function Home() {
           <h1 className="text-5xl font-display uppercase mb-1 text-gradient drop-shadow-sm">Imposter</h1>
           <p className="text-primary/50 text-sm tracking-wide">One Device · Pass &amp; Play</p>
         </div>
+
+        {/* Group Badge */}
+        <button
+          onClick={() => setShowGroupSheet(true)}
+          className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl border transition-all text-sm font-bold ${
+            group
+              ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
+              : "bg-muted/30 border-border/40 text-muted-foreground hover:border-primary/30 hover:text-primary"
+          }`}
+          data-testid="button-group-badge"
+        >
+          <Users className="w-4 h-4" />
+          {group ? (
+            <>
+              <span className="tracking-widest font-display">{group.code}</span>
+              {group.name && <span className="text-primary/60 font-normal">· {group.name}</span>}
+            </>
+          ) : (
+            "Sync with other devices"
+          )}
+        </button>
 
         {/* Player Roster */}
         <div className="card-playful p-4">
@@ -335,6 +519,13 @@ export default function Home() {
       <AnimatePresence>
         {viewingProfile && (
           <StatCard profile={viewingProfile} onClose={() => setViewingProfile(null)} />
+        )}
+      </AnimatePresence>
+
+      {/* Group Sheet */}
+      <AnimatePresence>
+        {showGroupSheet && (
+          <GroupSheet onClose={() => setShowGroupSheet(false)} />
         )}
       </AnimatePresence>
     </div>
