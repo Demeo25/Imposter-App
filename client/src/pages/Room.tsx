@@ -502,16 +502,16 @@ export default function Room() {
                       whileTap={seen ? {} : { scale: 0.95 }}
                       disabled={seen}
                       data-testid={`button-reveal-${p.id}`}
-                      className={`flex flex-col items-center justify-center py-7 rounded-3xl border-2 font-bold text-xl transition-all
+                      className={`flex flex-col items-center justify-center h-28 rounded-3xl border-2 font-bold text-xl transition-all
                         ${
                           seen
                             ? "bg-muted/20 border-border/30 text-foreground/25 cursor-default"
                             : "bg-primary text-white border-primary/60 shadow-lg cursor-pointer"
                         }`}
                     >
-                      {seen && <Eye className="w-5 h-5 mb-1 opacity-40" />}
+                      <Eye className={`w-5 h-5 mb-1 transition-opacity ${seen ? "opacity-40" : "opacity-0"}`} />
                       {p.name}
-                      {seen && <span className="text-xs font-normal mt-1 opacity-40">Done</span>}
+                      <span className={`text-xs font-normal mt-1 transition-opacity ${seen ? "opacity-40" : "opacity-0"}`}>Done</span>
                     </motion.button>
                   );
                 })}
