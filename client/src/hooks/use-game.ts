@@ -15,6 +15,8 @@ export function useProfiles() {
       if (!res.ok) throw new Error('Failed to fetch profiles');
       return res.json() as Promise<Profile[]>;
     },
+    // When in a group, poll so changes from other devices show up automatically
+    refetchInterval: groupCode ? 4000 : false,
   });
 }
 
@@ -94,6 +96,8 @@ export function useCategories() {
       if (!res.ok) throw new Error('Failed to fetch categories');
       return api.categories.list.responses[200].parse(await res.json());
     },
+    // Poll in a group so custom categories added on another device show up
+    refetchInterval: groupCode ? 8000 : false,
   });
 }
 
