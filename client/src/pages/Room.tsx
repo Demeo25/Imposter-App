@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useRoom, useStartGame, useNextRound, useRevealPlayer, useEndGame, useCategories, useCreateCategory, useSuggestWords, useProfiles, useAddProfilePlayer } from "@/hooks/use-game";
+import { useRoom, useStartGame, useNextRound, useRevealPlayer, useEndGame, useCategories, useCreateCategory, useSuggestWords, useProfiles, useAddProfilePlayer, useAbortGame } from "@/hooks/use-game";
 import { useSettings } from "@/hooks/use-settings";
 import { CategoryEditor } from "@/components/CategoryEditor";
 import { PlayfulButton } from "@/components/ui/playful-button";
@@ -218,6 +218,7 @@ export default function Room() {
   const nextRound = useNextRound(code || "");
   const revealPlayer = useRevealPlayer(code || "");
   const endGame = useEndGame(code || "");
+  const abortGame = useAbortGame(code || "");
   const { settings, update: updateSettings } = useSettings();
   const { data: categories } = useCategories();
 
@@ -226,6 +227,7 @@ export default function Room() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [addPlayerSheetOpen, setAddPlayerSheetOpen] = useState(false);
+  const [abortConfirmOpen, setAbortConfirmOpen] = useState(false);
 
   const { data: profiles = [] } = useProfiles();
   const addProfilePlayer = useAddProfilePlayer(code || "");
@@ -251,6 +253,13 @@ export default function Room() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.room?.id]);
+
+  // If the game gets aborted, return home
+  useEffect(() => {
+    if (data?.room?.status === "aborted") {
+      setLocation("/");
+    }
+  }, [data?.room?.status, setLocation]);
 
   // Which player is currently showing their secret overlay in the reveal phase
   const [revealingPlayer, setRevealingPlayer] = useState<Player | null>(null);
@@ -582,7 +591,76 @@ export default function Room() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Abort game (visible during reveal & playing phases) */}
+        {(room.status === "revealing" || room.status === "playing") && (
+          <div className="mt-6 flex justify-center">
+            <button
+              onClick={() => setAbortConfirmOpen(true)}
+              className="text-xs text-muted-foreground/70 hover:text-secondary border border-border/40 hover:border-secondary/50 px-4 py-2 rounded-xl transition-colors"
+              data-testid="button-abort-game"
+            >
+              Abort Game
+            </button>
+          </div>
+        )}
       </main>
+
+      {/* Abort confirmation dialog */}
+      <AnimatePresence>
+        {abortConfirmOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => !abortGame.isPending && setAbortConfirmOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.85, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.85, y: 20 }}
+              transition={{ type: "spring", damping: 22 }}
+              className="card-playful p-6 w-full max-w-sm text-center"
+              onClick={e => e.stopPropagation()}
+              data-testid="dialog-abort-confirm"
+            >
+              <h2 className="text-2xl font-display text-gradient mb-2">Abort game?</h2>
+              <p className="text-sm text-muted-foreground mb-5">
+                No stats will be saved.
+              </p>
+              <div className="flex gap-2">
+                <PlayfulButton
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setAbortConfirmOpen(false)}
+                  disabled={abortGame.isPending}
+                  data-testid="button-abort-cancel"
+                >
+                  Cancel
+                </PlayfulButton>
+                <PlayfulButton
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={async () => {
+                    try {
+                      await abortGame.mutateAsync();
+                      setAbortConfirmOpen(false);
+                      setLocation("/");
+                    } catch (err: any) {
+                      toast({ title: "Error", description: err.message, variant: "destructive" });
+                    }
+                  }}
+                  disabled={abortGame.isPending}
+                  data-testid="button-abort-confirm"
+                >
+                  {abortGame.isPending ? "Aborting..." : "Abort"}
+                </PlayfulButton>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Full-screen reveal overlay */}
       <AnimatePresence>

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useProfiles, useCreateProfile, useDeleteProfile, useRenameProfile, useCreateRoom } from "@/hooks/use-game";
 import { PlayfulButton } from "@/components/ui/playful-button";
 import { Input } from "@/components/ui/input";
-import { Ghost, UserPlus, Trash2, Check, X, BarChart2, Pencil, Users, Link2, LogOut, Copy } from "lucide-react";
+import { Ghost, UserPlus, Trash2, Check, X, BarChart2, Pencil, Users, Link2, LogOut, Copy, Trophy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGroup } from "@/context/GroupContext";
 import type { Profile } from "@shared/schema";
@@ -229,6 +229,172 @@ function GroupSheet({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ── Leaderboard Overlay ────────────────────────────────────────────────────────
+type LeaderboardStat = "imposterWins" | "imposterLosses" | "nonImposterWins" | "nonImposterLosses" | "gamesPlayed" | "badWordTally";
+type LeaderboardMode = "total" | "percentage";
+
+const STAT_OPTIONS: { value: LeaderboardStat; label: string; supportsPercentage: boolean }[] = [
+  { value: "imposterWins", label: "Imposter Wins", supportsPercentage: true },
+  { value: "imposterLosses", label: "Imposter Losses", supportsPercentage: true },
+  { value: "nonImposterWins", label: "Crew Wins", supportsPercentage: true },
+  { value: "nonImposterLosses", label: "Crew Losses", supportsPercentage: true },
+  { value: "gamesPlayed", label: "Games Played", supportsPercentage: false },
+  { value: "badWordTally", label: "Bad Words", supportsPercentage: false },
+];
+
+function getRawValue(profile: Profile, stat: LeaderboardStat): number {
+  switch (stat) {
+    case "gamesPlayed":
+      return profile.imposterWins + profile.imposterLosses + profile.nonImposterWins + profile.nonImposterLosses;
+    case "imposterWins": return profile.imposterWins;
+    case "imposterLosses": return profile.imposterLosses;
+    case "nonImposterWins": return profile.nonImposterWins;
+    case "nonImposterLosses": return profile.nonImposterLosses;
+    case "badWordTally": return profile.badWordTally;
+  }
+}
+
+function getDenominator(profile: Profile, stat: LeaderboardStat): number {
+  switch (stat) {
+    case "imposterWins":
+    case "imposterLosses":
+      return profile.imposterWins + profile.imposterLosses;
+    case "nonImposterWins":
+    case "nonImposterLosses":
+      return profile.nonImposterWins + profile.nonImposterLosses;
+    default:
+      return 0;
+  }
+}
+
+function Leaderboard({ profiles, onClose }: { profiles: Profile[]; onClose: () => void }) {
+  const [stat, setStat] = useState<LeaderboardStat>("imposterWins");
+  const [mode, setMode] = useState<LeaderboardMode>("total");
+
+  const currentOption = STAT_OPTIONS.find(o => o.value === stat)!;
+  const showPercentageToggle = currentOption.supportsPercentage;
+  const effectiveMode: LeaderboardMode = showPercentageToggle ? mode : "total";
+
+  const ranked = [...profiles]
+    .map(p => {
+      const raw = getRawValue(p, stat);
+      const denom = getDenominator(p, stat);
+      const hasData = effectiveMode === "percentage" ? denom > 0 : true;
+      const sortKey = effectiveMode === "percentage"
+        ? (denom > 0 ? raw / denom : -1)
+        : raw;
+      return { profile: p, raw, denom, hasData, sortKey };
+    })
+    .sort((a, b) => {
+      if (a.hasData && !b.hasData) return -1;
+      if (!a.hasData && b.hasData) return 1;
+      return b.sortKey - a.sortKey;
+    });
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.85, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.85, y: 20 }}
+        transition={{ type: "spring", damping: 22 }}
+        className="card-playful p-6 w-full max-w-md max-h-[85vh] flex flex-col"
+        onClick={e => e.stopPropagation()}
+        data-testid="overlay-leaderboard"
+      >
+        <div className="flex items-center justify-between mb-4 flex-shrink-0">
+          <h2 className="text-3xl font-display text-gradient flex items-center gap-2">
+            <Trophy className="w-6 h-6" /> Leaderboard
+          </h2>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors"
+            data-testid="button-close-leaderboard"
+          >
+            <X className="w-4 h-4 text-primary" />
+          </button>
+        </div>
+
+        {/* Stat selector */}
+        <div className="mb-3 flex-shrink-0">
+          <label className="text-xs font-bold uppercase tracking-wider text-primary/60 block mb-1.5">
+            Rank by
+          </label>
+          <select
+            value={stat}
+            onChange={e => setStat(e.target.value as LeaderboardStat)}
+            className="w-full h-11 bg-muted/60 border border-border focus:border-primary rounded-xl px-3 text-sm font-bold outline-none"
+            data-testid="select-leaderboard-stat"
+          >
+            {STAT_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Mode toggle */}
+        {showPercentageToggle && (
+          <div className="flex bg-muted/40 rounded-xl p-1 mb-4 flex-shrink-0">
+            {(["total", "percentage"] as const).map(m => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-colors capitalize ${
+                  effectiveMode === m ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"
+                }`}
+                data-testid={`button-leaderboard-mode-${m}`}
+              >
+                {m === "total" ? "Total" : "Percentage"}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Ranked list */}
+        <div className="flex-1 overflow-y-auto pr-0.5 flex flex-col gap-1.5">
+          {ranked.length === 0 ? (
+            <p className="text-center text-primary/40 py-8 text-sm">No profiles yet</p>
+          ) : (
+            ranked.map((entry, idx) => {
+              const { profile, raw, denom, hasData } = entry;
+              const rank = idx + 1;
+              const isPercent = effectiveMode === "percentage";
+              const valueText = !hasData
+                ? "—"
+                : isPercent
+                  ? `${Math.round((raw / denom) * 100)}% (${raw}/${denom})`
+                  : `${raw}`;
+              return (
+                <div
+                  key={profile.id}
+                  className={`flex items-center gap-3 h-12 px-3 rounded-xl border ${
+                    hasData ? "bg-primary/10 border-primary/30" : "bg-muted/30 border-border/40 opacity-60"
+                  }`}
+                  data-testid={`row-leaderboard-${profile.id}`}
+                >
+                  <span className="font-display text-lg w-7 text-center text-primary/70">
+                    {rank}
+                  </span>
+                  <span className="font-bold text-sm flex-1 truncate">{profile.name}</span>
+                  <span className="font-display text-base text-gradient" data-testid={`text-leaderboard-value-${profile.id}`}>
+                    {valueText}
+                  </span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ── Main Home Page ─────────────────────────────────────────────────────────────
 export default function Home() {
   const [, setLocation] = useLocation();
@@ -248,6 +414,7 @@ export default function Home() {
   const [renameValue, setRenameValue] = useState("");
   const [viewingProfile, setViewingProfile] = useState<Profile | null>(null);
   const [showGroupSheet, setShowGroupSheet] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   const toggleProfile = (id: number) => {
     setSelectedIds(prev =>
@@ -357,9 +524,19 @@ export default function Home() {
         <div className="card-playful p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xl font-display text-gradient">Players</h2>
-            <span className="text-xs font-bold text-primary/60">
-              {selectedCount} selected
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowLeaderboard(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-primary/30 bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-colors"
+                data-testid="button-open-leaderboard"
+              >
+                <Trophy className="w-3.5 h-3.5" />
+                Leaderboard
+              </button>
+              <span className="text-xs font-bold text-primary/60">
+                {selectedCount} selected
+              </span>
+            </div>
           </div>
 
           {isLoading ? (
@@ -526,6 +703,13 @@ export default function Home() {
       <AnimatePresence>
         {showGroupSheet && (
           <GroupSheet onClose={() => setShowGroupSheet(false)} />
+        )}
+      </AnimatePresence>
+
+      {/* Leaderboard overlay */}
+      <AnimatePresence>
+        {showLeaderboard && (
+          <Leaderboard profiles={profiles} onClose={() => setShowLeaderboard(false)} />
         )}
       </AnimatePresence>
     </div>

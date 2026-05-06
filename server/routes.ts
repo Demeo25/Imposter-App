@@ -632,6 +632,14 @@ export async function registerRoutes(
     res.status(200).json(updated);
   });
 
+  app.post(api.rooms.abort.path, async (req, res) => {
+    const code = req.params.code.toUpperCase();
+    const room = await storage.getRoomByCode(code);
+    if (!room) return res.status(404).json({ message: "Room not found" });
+    const updated = await storage.updateRoom(room.id, { status: "aborted" });
+    res.status(200).json(updated);
+  });
+
   app.post(api.rooms.next.path, async (req, res) => {
     const code = req.params.code.toUpperCase();
     const room = await storage.getRoomByCode(code);

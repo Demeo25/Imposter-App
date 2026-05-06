@@ -138,6 +138,11 @@ export const api = {
       path: '/api/rooms/:code/resolve' as const,
       responses: { 200: z.object({ ok: z.boolean() }), 404: errorSchemas.notFound },
     },
+    abort: {
+      method: 'POST' as const,
+      path: '/api/rooms/:code/abort' as const,
+      responses: { 200: z.custom<typeof rooms.$inferSelect>(), 404: errorSchemas.notFound },
+    },
   },
 };
 

@@ -271,6 +271,19 @@ export function useNextRound(code: string) {
   });
 }
 
+export function useAbortGame(code: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const url = buildUrl(api.rooms.abort.path, { code });
+      const res = await fetch(url, { method: api.rooms.abort.method });
+      if (!res.ok) throw new Error('Failed to abort game');
+      return api.rooms.abort.responses[200].parse(await res.json());
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['room', code] }),
+  });
+}
+
 export function useResolveGame(code: string) {
   const queryClient = useQueryClient();
   return useMutation({
