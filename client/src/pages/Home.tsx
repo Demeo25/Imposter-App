@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useProfiles, useCreateProfile, useDeleteProfile, useRenameProfile, useCreateRoom } from "@/hooks/use-game";
 import { PlayfulButton } from "@/components/ui/playful-button";
 import { Input } from "@/components/ui/input";
-import { Ghost, UserPlus, Trash2, Check, X, BarChart2, Pencil, Users, Link2, LogOut, Copy, Trophy } from "lucide-react";
+import { Ghost, UserPlus, Trash2, Check, X, BarChart2, Pencil, Users, Link2, LogOut, Copy, Trophy, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGroup } from "@/context/GroupContext";
 import type { Profile } from "@shared/schema";
@@ -93,6 +93,35 @@ function GroupSheet({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const handleShare = async () => {
+    if (!groupCode) return;
+    const shareUrl = `${window.location.origin}/?join=${groupCode}`;
+    const shareText = `Join my Imposter game! Code: ${groupCode}`;
+
+    // Use native share sheet if available (mobile), otherwise copy the link
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        await navigator.share({
+          title: "Imposter Party Game",
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch (err: any) {
+        // User cancelled — silently ignore
+        if (err?.name === "AbortError") return;
+        // Fall through to clipboard fallback on other errors
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast({ title: "Link copied!", description: "Paste it to a friend so they can join your group." });
+    } catch {
+      toast({ title: "Couldn't share", description: shareUrl, variant: "destructive" });
+    }
+  };
+
   const handleLeave = () => {
     leaveGroup();
     onClose();
@@ -142,14 +171,26 @@ function GroupSheet({ onClose }: { onClose: () => void }) {
                 {group.code}
               </p>
             </div>
-            <PlayfulButton
-              variant="outline"
-              className="w-full gap-2"
-              onClick={handleCopyCode}
-              data-testid="button-copy-group-code"
-            >
-              <Copy className="w-4 h-4" /> Copy Code
-            </PlayfulButton>
+            <div className="grid grid-cols-2 gap-2">
+              <PlayfulButton
+                variant="outline"
+                className="w-full gap-2"
+                onClick={handleCopyCode}
+                data-testid="button-copy-group-code"
+              >
+                <Copy className="w-4 h-4" /> Copy
+              </PlayfulButton>
+              <PlayfulButton
+                className="w-full gap-2"
+                onClick={handleShare}
+                data-testid="button-share-group-link"
+              >
+                <Share2 className="w-4 h-4" /> Share Link
+              </PlayfulButton>
+            </div>
+            <p className="text-xs text-muted-foreground text-center -mt-1">
+              Friends who tap your shared link join this group automatically.
+            </p>
             <button
               onClick={handleLeave}
               className="flex items-center justify-center gap-2 text-sm text-secondary/70 hover:text-secondary transition-colors py-2"
@@ -395,11 +436,95 @@ function Leaderboard({ profiles, onClose }: { profiles: Profile[]; onClose: () =
   );
 }
 
+// ── Pending Join Prompt ────────────────────────────────────────────────────────
+function JoinPrompt({
+  pendingCode, currentCode, onAccept, onDismiss,
+}: {
+  pendingCode: string;
+  currentCode: string | null;
+  onAccept: () => void;
+  onDismiss: () => void;
+}) {
+  const isSwitch = currentCode && currentCode !== pendingCode;
+  const alreadyIn = currentCode === pendingCode;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onDismiss}
+    >
+      <motion.div
+        initial={{ scale: 0.85, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.85, y: 20 }}
+        transition={{ type: "spring", damping: 22 }}
+        className="card-playful p-6 w-full max-w-sm text-center"
+        onClick={e => e.stopPropagation()}
+        data-testid="overlay-join-prompt"
+      >
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/15 border border-primary/30 text-primary mb-3">
+          <Users className="w-6 h-6" />
+        </div>
+        <h2 className="text-2xl font-display text-gradient mb-1">
+          {alreadyIn ? "You're in this group" : isSwitch ? "Switch Group?" : "Join this group?"}
+        </h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          {alreadyIn
+            ? "You're already a member of this group."
+            : isSwitch
+              ? "You're already in another group. Joining will replace it."
+              : "Connect this device so you share players and categories."}
+        </p>
+
+        {isSwitch && (
+          <div className="flex items-center justify-center gap-2 mb-4 text-xs">
+            <span className="px-2 py-1 rounded-lg bg-muted/40 border border-border/40 font-display tracking-widest" data-testid="text-current-group-code">
+              {currentCode}
+            </span>
+            <span className="text-muted-foreground">→</span>
+            <span className="px-2 py-1 rounded-lg bg-primary/10 border border-primary/30 text-primary font-display tracking-widest" data-testid="text-pending-group-code">
+              {pendingCode}
+            </span>
+          </div>
+        )}
+
+        {!isSwitch && (
+          <p className="text-3xl font-display text-gradient tracking-widest mb-4" data-testid="text-pending-group-code">
+            {pendingCode}
+          </p>
+        )}
+
+        <div className="flex flex-col gap-2">
+          {!alreadyIn && (
+            <PlayfulButton
+              className="w-full gap-2"
+              onClick={onAccept}
+              data-testid="button-accept-join"
+            >
+              <Link2 className="w-4 h-4" /> {isSwitch ? "Switch Group" : "Join Group"}
+            </PlayfulButton>
+          )}
+          <button
+            onClick={onDismiss}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+            data-testid="button-dismiss-join"
+          >
+            {alreadyIn ? "Got it" : "Not now"}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ── Main Home Page ─────────────────────────────────────────────────────────────
 export default function Home() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { group } = useGroup();
+  const { group, groupCode, pendingJoinCode, acceptPendingJoin, dismissPendingJoin } = useGroup();
 
   const { data: profiles = [], isLoading } = useProfiles();
   const createProfile = useCreateProfile();
@@ -710,6 +835,22 @@ export default function Home() {
       <AnimatePresence>
         {showLeaderboard && (
           <Leaderboard profiles={profiles} onClose={() => setShowLeaderboard(false)} />
+        )}
+      </AnimatePresence>
+
+      {/* Join confirmation prompt (from ?join=CODE deep link) */}
+      <AnimatePresence>
+        {pendingJoinCode && (
+          <JoinPrompt
+            pendingCode={pendingJoinCode}
+            currentCode={groupCode}
+            onAccept={async () => {
+              const target = pendingJoinCode;
+              await acceptPendingJoin();
+              toast({ title: "Joined!", description: `Synced with group ${target}.` });
+            }}
+            onDismiss={dismissPendingJoin}
+          />
         )}
       </AnimatePresence>
     </div>

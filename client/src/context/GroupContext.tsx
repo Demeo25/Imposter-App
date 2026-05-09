@@ -12,6 +12,9 @@ interface GroupContextValue {
   leaveGroup: () => void;
   error: string | null;
   clearError: () => void;
+  pendingJoinCode: string | null;
+  acceptPendingJoin: () => Promise<void>;
+  dismissPendingJoin: () => void;
 }
 
 const GroupContext = createContext<GroupContextValue | null>(null);
@@ -24,8 +27,26 @@ export function GroupProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // On mount, if we have a stored code, verify it
+  // Pending invitation captured from a ?join=CODE deep link. The actual switch
+  // happens via acceptPendingJoin() so we never overwrite the user's existing
+  // group without their consent.
+  const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(null);
+
+  // On mount: capture any ?join=CODE param, then verify stored code (always)
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const joinParam = params.get("join");
+
+    if (joinParam) {
+      const code = joinParam.trim().toUpperCase();
+      // Strip ?join= from the URL so it doesn't keep firing on refresh
+      params.delete("join");
+      const newSearch = params.toString();
+      const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : "") + window.location.hash;
+      window.history.replaceState({}, "", newUrl);
+      if (code) setPendingJoinCode(code);
+    }
+
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       fetch(`/api/groups/${stored}`)
@@ -96,8 +117,22 @@ export function GroupProvider({ children }: { children: React.ReactNode }) {
 
   const clearError = useCallback(() => setError(null), []);
 
+  const acceptPendingJoin = useCallback(async () => {
+    if (!pendingJoinCode) return;
+    const code = pendingJoinCode;
+    setPendingJoinCode(null);
+    await joinGroup(code);
+  }, [pendingJoinCode, joinGroup]);
+
+  const dismissPendingJoin = useCallback(() => {
+    setPendingJoinCode(null);
+  }, []);
+
   return (
-    <GroupContext.Provider value={{ groupCode, group, isLoading, joinGroup, createGroup, leaveGroup, error, clearError }}>
+    <GroupContext.Provider value={{
+      groupCode, group, isLoading, joinGroup, createGroup, leaveGroup,
+      error, clearError, pendingJoinCode, acceptPendingJoin, dismissPendingJoin,
+    }}>
       {children}
     </GroupContext.Provider>
   );
