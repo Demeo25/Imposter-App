@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useProfiles, useCreateProfile, useDeleteProfile, useRenameProfile, useCreateRoom } from "@/hooks/use-game";
 import { PlayfulButton } from "@/components/ui/playful-button";
 import { Input } from "@/components/ui/input";
-import { Ghost, UserPlus, Trash2, Check, X, BarChart2, Pencil, Users, Link2, LogOut, Copy, Trophy, Share2 } from "lucide-react";
+import { Ghost, UserPlus, Trash2, Check, X, BarChart2, Pencil, Users, Link2, LogOut, Copy, Trophy, Share2, HelpCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGroup } from "@/context/GroupContext";
 import type { Profile } from "@shared/schema";
@@ -436,6 +436,79 @@ function Leaderboard({ profiles, onClose }: { profiles: Profile[]; onClose: () =
   );
 }
 
+// ── How To Play Overlay ────────────────────────────────────────────────────────
+function HowToPlay({ onClose }: { onClose: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.85, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.85, y: 20 }}
+        transition={{ type: "spring", damping: 22 }}
+        className="card-playful p-6 w-full max-w-md max-h-[85vh] flex flex-col"
+        onClick={e => e.stopPropagation()}
+        data-testid="overlay-how-to-play"
+      >
+        <div className="flex items-center justify-between mb-4 flex-shrink-0">
+          <h2 className="text-3xl font-display text-gradient flex items-center gap-2">
+            <HelpCircle className="w-6 h-6" /> How to Play
+          </h2>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center hover:bg-primary/20 transition-colors"
+            data-testid="button-close-how-to-play"
+          >
+            <X className="w-4 h-4 text-primary" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-3 text-sm leading-relaxed">
+          <div className="bg-primary/10 border border-primary/30 rounded-2xl p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-primary/70 mb-1.5">The Setup</p>
+            <p className="text-foreground/90">
+              Each round, one player is secretly chosen as the <span className="font-bold text-secondary">Imposter</span> while everyone else receives the same hidden word within a category.
+            </p>
+          </div>
+
+          <div className="bg-muted/40 border border-border/40 rounded-2xl p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-primary/70 mb-1.5">Giving Clues</p>
+            <p className="text-foreground/90">
+              Players take turns providing a word related to the secret word — enough to prove to the other crew members that you know the secret word, but not so obvious that the Imposter can figure it out.
+            </p>
+          </div>
+
+          <div className="bg-secondary/10 border border-secondary/30 rounded-2xl p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-secondary/70 mb-1.5">If You're the Imposter</p>
+            <p className="text-foreground/90">
+              Blend in, avoid suspicion, and try to identify the hidden word before the round ends.
+            </p>
+          </div>
+
+          <div className="bg-muted/40 border border-border/40 rounded-2xl p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-primary/70 mb-1.5">The Vote</p>
+            <p className="text-foreground/90">
+              After the discussion, everyone votes on who they think the Imposter is.
+            </p>
+          </div>
+
+          <div className="bg-primary/10 border border-primary/30 rounded-2xl p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-primary/70 mb-1.5">Winning</p>
+            <p className="text-foreground/90">
+              If the Imposter survives the vote or correctly guesses the word, <span className="font-bold text-secondary">they win</span>. If the crew identifies the Imposter, <span className="font-bold text-primary">the crew wins</span>.
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ── Pending Join Prompt ────────────────────────────────────────────────────────
 function JoinPrompt({
   pendingCode, currentCode, onAccept, onDismiss,
@@ -540,6 +613,7 @@ export default function Home() {
   const [viewingProfile, setViewingProfile] = useState<Profile | null>(null);
   const [showGroupSheet, setShowGroupSheet] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
 
   const toggleProfile = (id: number) => {
     setSelectedIds(prev =>
@@ -602,6 +676,16 @@ export default function Home() {
       {/* Glow orbs */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-primary/8 blur-[100px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full bg-secondary/8 blur-[80px] pointer-events-none" />
+
+      {/* Floating "How to Play" help button */}
+      <button
+        onClick={() => setShowHowToPlay(true)}
+        className="fixed top-4 right-4 z-20 w-11 h-11 rounded-full bg-primary/15 border border-primary/30 text-primary hover:bg-primary/25 hover:scale-105 active:scale-95 transition-all flex items-center justify-center backdrop-blur-sm"
+        aria-label="How to Play"
+        data-testid="button-open-how-to-play"
+      >
+        <HelpCircle className="w-5 h-5" />
+      </button>
 
       <motion.div
         initial={{ scale: 0.92, opacity: 0 }}
@@ -835,6 +919,13 @@ export default function Home() {
       <AnimatePresence>
         {showLeaderboard && (
           <Leaderboard profiles={profiles} onClose={() => setShowLeaderboard(false)} />
+        )}
+      </AnimatePresence>
+
+      {/* How to Play overlay */}
+      <AnimatePresence>
+        {showHowToPlay && (
+          <HowToPlay onClose={() => setShowHowToPlay(false)} />
         )}
       </AnimatePresence>
 
